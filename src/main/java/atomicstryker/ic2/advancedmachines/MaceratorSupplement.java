@@ -59,9 +59,9 @@ public final class MaceratorSupplement {
         public final ItemStack glowstoneDust;
 
         public References(ItemStack copperCrushed, ItemStack tinCrushed, ItemStack bronzeDust,
-            ItemStack hydratedCoalDust, ItemStack twoQuartz, ItemStack quartzOre, ItemStack sand,
-            ItemStack netherrack, ItemStack redstone, ItemStack coalDust, ItemStack waterBucket,
-            ItemStack waterCell, ItemStack ice, ItemStack glowstoneDust) {
+            ItemStack hydratedCoalDust, ItemStack twoQuartz, ItemStack quartzOre, ItemStack sand, ItemStack netherrack,
+            ItemStack redstone, ItemStack coalDust, ItemStack waterBucket, ItemStack waterCell, ItemStack ice,
+            ItemStack glowstoneDust) {
             this.copperCrushed = copperCrushed;
             this.tinCrushed = tinCrushed;
             this.bronzeDust = bronzeDust;

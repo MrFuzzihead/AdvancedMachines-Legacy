@@ -12,17 +12,17 @@
 |---|----------|-------|-------|
 | 1 | **Critical** | Rotary Macerator supplement logic **deletes normal outputs** whenever anything sits in the supplement slot — **FIXED** (§1.1) | `TileEntityAdvancedMacerator.java:150-153` |
 | 2 | **Critical** | `getOutput()` re-creates an output after the helper deliberately refused (output full / no water) → **input consumed, output voided** — **FIXED** (§1.2) | `TileEntityAdvancedMacerator.java:115-130` |
-| 3 | **Critical** | Supplement slot click handler checks the **container slot index 8** (a player hotbar slot) instead of the supplement slot (index 44) → **deletes a player item** | `ContainerAdvancedMacerator.java:22-35` |
+| 3 | **Critical** | Supplement slot click handler checks the **container slot index 8** (a player hotbar slot) instead of the supplement slot (index 44) → **deletes a player item** — **FIXED** (§1.3, override removed) | `ContainerAdvancedMacerator.java:22-35` |
 | 4 | **High** | Speed hack **adds progress for free when the machine has no energy** → up to 10× speed while many progress ticks cost no EU — **FIXED** (§1.4) | `CommonLogicAdvancedMachines.java:129-152` |
 | 5 | **High** | Progress is manipulated via **reflection**; failure silently disables speed and also disables the only guard on the dummy-redstone path — **FIXED** (§1.5) | `CommonLogicAdvancedMachines.java:29-56, 129-159` |
 | 6 | **High** | Redstone "stall" injects a fake **dirt** `RecipeOutput`; can crash (`consume without a processing result`) or emit dirt in edge cases — **FIXED** (§1.6) | `CommonLogicAdvancedMachines.java:26, 75-115, 117-127` |
 | 7 | **High** | Combined Recycler bypasses the base recycler's **1-in-8 scrap chance** → 8× scrap yield | `TileEntityAdvancedRecycler.java:57-60` vs IC2 `TileEntityRecycler.operateOnce` |
-| 8 | **High** | Mining drops the **IC2 basic machine block** (`blockMachine:0`), not the advanced machine (`:12`) the code intends | `BlockAdvancedMachines.java:213-216` + missing `damageDropped` |
+| 8 | **High** | Mining drops the **IC2 basic machine block** (`blockMachine:0`), not the advanced machine (`:12`) the code intends — **FIXED** (§1.8) | `BlockAdvancedMachines.java:213-216` + missing `damageDropped` |
 | 9 | **High** | Client icon table is the **IC2 1.6.4** table; reflection target no longer exists → wrong face textures for 12/36 (side, facing) pairs — **FIXED** (§1.9) | `client/AdvancedMachinesClient.java:21-33` |
 | 10 | **Medium** | Macerator supplement state not persisted; unguarded stack math can NPE / go negative / leave 0-size phantom stacks — **FIXED** (§1.10) | `TileEntityAdvancedMacerator.java:201-217` |
-| 11 | **Medium** | `isItemValidForSlot` / `canExtractItem` mix up legacy `oldStartIndex` with live inventory indexes → automation can pull upgrades out of the 3rd upgrade slot | `TileEntityAdvancedMacerator.java:240-256` |
+| 11 | **Medium** | `isItemValidForSlot` / `canExtractItem` mix up legacy `oldStartIndex` with live inventory indexes → automation can pull upgrades out of the 3rd upgrade slot — **FIXED** (§1.11) | `TileEntityAdvancedMacerator.java:240-256` |
 | 12 | **Medium** | Identity recipes are pushed into the **global** `Recipes.macerator`, affecting plain IC2 Macerators, and use an uncacheable stateful `IRecipeInput` hack — **FIXED** (§1.12) | `ModAdvancedMachines.java:125-131, 177-209` |
-| 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
+| 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop — **FIXED** (§1.13; GUI-close-on-break still open) | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
 | 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) — **PARTIAL** (config validation fixed in §1.14; `maxEnergy` sizing still open, see §2.6) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
 | 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
 
@@ -480,7 +480,7 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 | 1 | Test harness (JUnit), `MachineMath` extraction, speed/math tests, config validation (§1.14) | ✅ done |
 | 2 | Macerator supplement correctness (§1.1, §1.2, §1.10, §1.12) | ✅ done |
 | 3 | Speed energy gating + redstone stall removal (§1.4, §1.6) | ✅ done |
-| 4 | Container/block/index/drops robustness (§1.3, §1.8, §1.11, §1.13) | ⬜ pending |
+| 4 | Container/block/index/drops robustness (§1.3, §1.8, §1.11, §1.13) | ✅ done |
 | 5 | Recycler scrap chance + polish/localization/build metadata (§1.7, §4, §7, §1.15) | ⬜ pending |
 
 ### Batch 1 details (done)
@@ -531,3 +531,25 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
   and the dirt-output path entirely. §1.6.
 * Tests: 5 new tests for the shared logic (extra progress only while running, no idle progress, ramp
   up/down, redstone stall, power-factor scaling).
+
+### Batch 4 details (done)
+
+* §1.3: deleted the `ContainerAdvancedMacerator.slotClick` override entirely. It compared the
+  *container slot id* (8 = a player hotbar slot) against the tile-entity supplement index and could
+  delete a player item; the charge state is already handled correctly by the tile entity
+  (`operateOnce` clears it when the slot empties, and `resetChargeIfSupplementChanged` handles swaps).
+* §1.8: `damageDropped` now returns IC2's advanced machine damage (12) when the wrench requirement is
+  in effect, and `getItemDropped`/`damageDropped` mirror IC2's `balance/ignoreWrenchRequirement`
+  behaviour when it is disabled.
+* §1.11: the supplement slot is now `InvSlot.Access.NONE`, so automation can neither insert nor
+  extract, while the player-managed plain container slot still works. The misleading
+  `isItemValidForSlot`/`canExtractItem` overrides (which special-cased legacy `oldStartIndex` values as
+  if they were inventory indexes) are gone; the extra output slot is handled correctly by the base
+  `InvSlotOutput`.
+* §1.13: `getIcon` is metadata-bounds checked and null-safe (corrupt meta no longer throws an
+  `ArrayIndexOutOfBoundsException`), `isActive` tolerates a missing tile entity, `onBlockPlacedBy`
+  only runs server-side and null-checks the tile entity/player, the dead `breakBlock` duplicating loop
+  was removed, and `canCreatureSpawn` now returns false like IC2's machines.
+* Tests: 5 new block tests (drop damage, meta bounds, spawn guard) plus 2 automation tests for the
+  supplement/extra-output slot access rights.
+* Ran `spotlessApply` over the tree.

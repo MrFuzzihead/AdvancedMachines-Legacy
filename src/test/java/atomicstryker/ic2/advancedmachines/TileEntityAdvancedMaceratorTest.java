@@ -107,7 +107,9 @@ public class TileEntityAdvancedMaceratorTest {
 
         assertNotNull(output);
         assertEquals(1, output.items.size());
-        assertTrue(output.items.get(0).isItemEqual(COPPER));
+        assertTrue(
+            output.items.get(0)
+                .isItemEqual(COPPER));
         assertFalse(output.metadata.getBoolean("advSupplement"));
     }
 
@@ -121,7 +123,9 @@ public class TileEntityAdvancedMaceratorTest {
 
         assertNotNull(output);
         assertEquals(1, output.items.size());
-        assertTrue(output.items.get(0).isItemEqual(BRONZE));
+        assertTrue(
+            output.items.get(0)
+                .isItemEqual(BRONZE));
         assertTrue(output.metadata.getBoolean("advSupplement"));
 
         te.operateOnce(output, output.items);
@@ -163,7 +167,9 @@ public class TileEntityAdvancedMaceratorTest {
         assertTrue(output.metadata.getBoolean("advNoBaseRecipe"));
         assertEquals(1, output.items.size());
         assertEquals(2, output.items.get(0).stackSize);
-        assertTrue(output.items.get(0).isItemEqual(QUARTZ));
+        assertTrue(
+            output.items.get(0)
+                .isItemEqual(QUARTZ));
 
         te.operateOnce(output, output.items);
 
@@ -180,7 +186,9 @@ public class TileEntityAdvancedMaceratorTest {
         RecipeOutput output = te.getOutput();
 
         assertNotNull(output);
-        assertTrue(output.items.get(0).isItemEqual(GLOWSTONE));
+        assertTrue(
+            output.items.get(0)
+                .isItemEqual(GLOWSTONE));
         assertEquals(6, output.metadata.getInteger("advDrain"));
 
         te.operateOnce(output, output.items);
@@ -197,7 +205,9 @@ public class TileEntityAdvancedMaceratorTest {
         RecipeOutput output = te.getOutput();
 
         assertNotNull(output);
-        assertTrue(output.items.get(0).isItemEqual(HYDRATED));
+        assertTrue(
+            output.items.get(0)
+                .isItemEqual(HYDRATED));
 
         te.operateOnce(output, output.items);
 
@@ -268,5 +278,32 @@ public class TileEntityAdvancedMaceratorTest {
         assertNotNull(second);
         // stale sand charge dropped; the glowstone rule starts a fresh 1-use charge
         assertEquals(1, te.supplementedItemsLeft);
+    }
+
+    /**
+     * §1.11: the supplement slot is player-managed only. Automation must not be able to pull items
+     * out of it or push items in.
+     */
+    @Test
+    public void automationCannotManageTheSupplementSlot() {
+        TileEntityAdvancedMacerator te = newMacerator();
+        ItemStack supplement = new ItemStack(I_TIN_ORE);
+
+        assertFalse(te.canInsertItem(TileEntityAdvancedMacerator.SUPPLEMENT_SLOT_INDEX, supplement, 0));
+        assertFalse(te.canExtractItem(TileEntityAdvancedMacerator.SUPPLEMENT_SLOT_INDEX, supplement, 0));
+    }
+
+    /** The extra output slot stays automatable (bottom side extraction) after the index mix-up fix. */
+    @Test
+    public void automationCanExtractTheExtraOutputSlot() {
+        TileEntityAdvancedMacerator te = newMacerator();
+        int extraOutput = 7; // discharge(0) output(1) upgrades(2-5) input(6) outputextra(7) supplement(8)
+        ItemStack stack = new ItemStack(I_BRONZE);
+        te.getOutputSlots()
+            .get(1)
+            .put(stack);
+
+        assertTrue(te.canExtractItem(extraOutput, stack, 0));
+        assertFalse(te.canInsertItem(extraOutput, stack, 0));
     }
 }

@@ -1,7 +1,6 @@
 package atomicstryker.ic2.advancedmachines;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Random;
 
 import net.minecraft.block.Block;
@@ -9,7 +8,7 @@ import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.EnumCreatureType;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -27,8 +26,16 @@ import ic2.core.IC2;
 import ic2.core.block.BlockBase;
 import ic2.core.block.TileEntityBlock;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
+import ic2.core.init.MainConfig;
+import ic2.core.util.ConfigUtil;
 
 public class BlockAdvancedMachines extends BlockContainer {
+
+    /** Number of machine variants (one per block metadata value). */
+    public static final int MACHINE_COUNT = 5;
+
+    /** IC2 advanced machine casing item damage (`Ic2Items.advancedMachine`). */
+    private static final int ADVANCED_MACHINE_DAMAGE = 12;
 
     private IIcon[][] iconBuffer;
 
@@ -40,7 +47,7 @@ public class BlockAdvancedMachines extends BlockContainer {
 
     @Override
     public void registerBlockIcons(IIconRegister par1IconRegister) {
-        iconBuffer = new IIcon[5][12]; // 5 machines, 6 sides each, in ON and OFF states
+        iconBuffer = new IIcon[MACHINE_COUNT][12]; // one machine per meta, 6 sides each, ON and OFF
 
         // meta 0, macerator
         // first the 6 sides in OFF state
@@ -126,6 +133,10 @@ public class BlockAdvancedMachines extends BlockContainer {
     @Override
     public IIcon getIcon(IBlockAccess world, int x, int y, int z, int blockSide) {
         int blockMeta = world.getBlockMetadata(x, y, z);
+        if (iconBuffer == null || !supportsMeta(blockMeta)) {
+            return null;
+        }
+
         TileEntity te = world.getTileEntity(x, y, z);
         int facing = (te instanceof TileEntityBlock) ? ((int) (((TileEntityBlock) te).getFacing())) : 0;
 
@@ -139,8 +150,16 @@ public class BlockAdvancedMachines extends BlockContainer {
 
     @Override
     public IIcon getIcon(int blockSide, int blockMeta) {
+        if (iconBuffer == null || !supportsMeta(blockMeta)) {
+            return null;
+        }
         // Inventory rendering: IC2's default facing is 3.
         return iconBuffer[blockMeta][BlockBase.getTextureSubIndex(3, blockSide)];
+    }
+
+    /** Guards against corrupt/foreign metadata instead of throwing an ArrayIndexOutOfBoundsException. */
+    static boolean supportsMeta(int meta) {
+        return meta >= 0 && meta < MACHINE_COUNT;
     }
 
     @Override
@@ -187,36 +206,46 @@ public class BlockAdvancedMachines extends BlockContainer {
     @Override
     public void breakBlock(World world, int x, int y, int z, Block blockID, int blockMeta) {
         super.breakBlock(world, x, y, z, blockID, blockMeta);
-        boolean var5 = true;
-        for (Iterator<ItemStack> iter = getDrops(world, x, y, z, world.getBlockMetadata(x, y, z), 0).iterator(); iter
-            .hasNext(); var5 = false) {
-            ItemStack var7 = (ItemStack) iter.next();
-            if (!var5) {
-                if (var7 == null) {
-                    return;
-                }
-
-                double var8 = 0.7D;
-                double var10 = (double) world.rand.nextFloat() * var8 + (1.0D - var8) * 0.5D;
-                double var12 = (double) world.rand.nextFloat() * var8 + (1.0D - var8) * 0.5D;
-                double var14 = (double) world.rand.nextFloat() * var8 + (1.0D - var8) * 0.5D;
-                EntityItem var16 = new EntityItem(
-                    world,
-                    (double) x + var10,
-                    (double) y + var12,
-                    (double) z + var14,
-                    var7);
-                var16.delayBeforeCanPickup = 10;
-                world.spawnEntityInWorld(var16);
-                return;
-            }
-        }
+        // Nothing else to do: BlockContainer.breakBlock already removed the tile entity, and vanilla
+        // drops the inventory through getDrops() via dropBlockAsItemWithChance(). The old custom
+        // duplicating loop here was dead code and would have duplicated a stack if the removal order
+        // ever changed.
     }
 
     @Override
-    public Item getItemDropped(int p_149650_1_, Random p_149650_2_, int p_149650_3_) {
-        return IC2Items.getItem("advancedMachine")
-            .getItem();
+    public Item getItemDropped(int meta, Random random, int fortune) {
+        if (ignoreWrenchRequirement()) {
+            return Item.getItemFromBlock(this);
+        }
+        ItemStack advancedMachine = IC2Items.getItem("advancedMachine");
+        return advancedMachine != null ? advancedMachine.getItem() : Item.getItemFromBlock(this);
+    }
+
+    @Override
+    public int damageDropped(int meta) {
+        return droppedDamage(meta, ignoreWrenchRequirement());
+    }
+
+    /**
+     * The item that vanilla creates for a broken machine is
+     * {@code new ItemStack(getItemDropped(meta), 1, damageDropped(meta))}. Without the override below
+     * the damage defaulted to 0, i.e. mining yielded IC2's basic machine casing instead of the
+     * advanced machine component the code intended.
+     */
+    static int droppedDamage(int meta, boolean ignoreWrenchRequirement) {
+        return ignoreWrenchRequirement ? meta : ADVANCED_MACHINE_DAMAGE;
+    }
+
+    /**
+     * Mirrors IC2's {@code BlockMachine} behaviour: by default the machine itself is only recovered
+     * with a wrench, while mining returns the advanced machine casing.
+     */
+    private static boolean ignoreWrenchRequirement() {
+        try {
+            return ConfigUtil.getBool(MainConfig.get(), "balance/ignoreWrenchRequirement");
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /**
@@ -230,21 +259,35 @@ public class BlockAdvancedMachines extends BlockContainer {
 
     @Override
     public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase player, ItemStack stack) {
+        if (!IC2.platform.isSimulating()) {
+            return;
+        }
         super.onBlockPlacedBy(world, x, y, z, player, stack);
+
+        TileEntity te = world.getTileEntity(x, y, z);
+        if (!(te instanceof TileEntityBlock)) {
+            return;
+        }
+        TileEntityBlock teb = (TileEntityBlock) te;
+
+        if (player == null) {
+            teb.setFacing((short) 2);
+            return;
+        }
+
         int heading = MathHelper.floor_double((double) (player.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
-        TileEntityBlock te = (TileEntityBlock) world.getTileEntity(x, y, z);
         switch (heading) {
             case 0:
-                te.setFacing((short) 2);
+                teb.setFacing((short) 2);
                 break;
             case 1:
-                te.setFacing((short) 5);
+                teb.setFacing((short) 5);
                 break;
             case 2:
-                te.setFacing((short) 3);
+                teb.setFacing((short) 3);
                 break;
             case 3:
-                te.setFacing((short) 4);
+                teb.setFacing((short) 4);
                 break;
         }
     }
@@ -261,7 +304,13 @@ public class BlockAdvancedMachines extends BlockContainer {
     }
 
     private boolean isActive(IBlockAccess iba, int x, int y, int z) {
-        return ((TileEntityBlock) iba.getTileEntity(x, y, z)).getActive();
+        TileEntity te = iba.getTileEntity(x, y, z);
+        return te instanceof TileEntityBlock && ((TileEntityBlock) te).getActive();
+    }
+
+    @Override
+    public boolean canCreatureSpawn(EnumCreatureType type, IBlockAccess world, int x, int y, int z) {
+        return false;
     }
 
     @Override

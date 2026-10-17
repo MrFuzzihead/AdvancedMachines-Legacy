@@ -40,8 +40,8 @@ public final class MachineMath {
      * for behavioural compatibility. All degenerate configurations (non-positive factor/ticks or a
      * truncated divisor) return {@code 0} instead of throwing.
      *
-     * @param speed        current speed counter
-     * @param maxTicks     {@code maxMachineSpeedUpTicks} from the config
+     * @param speed         current speed counter
+     * @param maxTicks      {@code maxMachineSpeedUpTicks} from the config
      * @param speedUpFactor {@code maxMachineSpeedUpFactor} from the config (including the base tick)
      * @return extra progress ticks in {@code [0, max(0, speedUpFactor - 1)]}
      */

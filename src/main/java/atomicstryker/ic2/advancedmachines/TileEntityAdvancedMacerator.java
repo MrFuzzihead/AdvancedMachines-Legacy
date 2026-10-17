@@ -50,7 +50,7 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
             .add(outputSlot);
         advLogic.getOutputSlots()
             .add(new InvSlotOutput(this, "outputextra1", EXTRA_OUT_SLOT_INDEX, 1));
-        supplementSlot = new InvSlot(this, "supplement", SUPPLEMENT_SLOT_INDEX, InvSlot.Access.I, 1);
+        supplementSlot = new InvSlot(this, "supplement", SUPPLEMENT_SLOT_INDEX, InvSlot.Access.NONE, 1);
     }
 
     @Override
@@ -310,24 +310,6 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
     @Override
     public ArrayList<InvSlotOutput> getOutputSlots() {
         return advLogic.getOutputSlots();
-    }
-
-    @Override
-    public boolean isItemValidForSlot(int slot, ItemStack itemStack) {
-        if (slot == SUPPLEMENT_SLOT_INDEX) {
-            return false;
-        }
-        return super.isItemValidForSlot(slot, itemStack);
-    }
-
-    @Override
-    public boolean canExtractItem(int slot, ItemStack itemstack, int blockSide) {
-        if (slot == SUPPLEMENT_SLOT_INDEX) {
-            return false;
-        } else if (slot == EXTRA_OUT_SLOT_INDEX) {
-            return true;
-        }
-        return super.canExtractItem(slot, itemstack, blockSide);
     }
 
     @Override

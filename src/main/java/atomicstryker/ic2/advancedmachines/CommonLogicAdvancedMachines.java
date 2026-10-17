@@ -187,8 +187,7 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
             return;
         }
 
-        short extraProgress = MachineMath.extraProgressTicks(speed, settings.speedUpTicks,
-            settings.speedUpFactor);
+        short extraProgress = MachineMath.extraProgressTicks(speed, settings.speedUpTicks, settings.speedUpFactor);
         progress.setRawProgress((short) (progress.getRawProgress() + extraProgress));
     }
 
@@ -216,9 +215,8 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     }
 
     private static boolean isRedstonePowered(TileEntityStandardMachine te) {
-        return te.hasWorldObj()
-            && te.getWorldObj()
-                .isBlockIndirectlyGettingPowered(te.xCoord, te.yCoord, te.zCoord);
+        return te.hasWorldObj() && te.getWorldObj()
+            .isBlockIndirectlyGettingPowered(te.xCoord, te.yCoord, te.zCoord);
     }
 
 }

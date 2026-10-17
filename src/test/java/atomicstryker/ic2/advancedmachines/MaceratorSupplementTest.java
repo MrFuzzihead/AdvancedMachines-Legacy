@@ -88,21 +88,26 @@ public class MaceratorSupplementTest {
      */
     @Test
     public void nonMatchingSupplementHasNoEffect() {
-        assertFalse(MaceratorSupplement.classify(REFS, TIN_SOURCE, COPPER, COPPER, SAND).hasEffect());
-        assertFalse(MaceratorSupplement.classify(REFS, TIN_SOURCE, COPPER, COPPER, REDSTONE).hasEffect());
+        assertFalse(
+            MaceratorSupplement.classify(REFS, TIN_SOURCE, COPPER, COPPER, SAND)
+                .hasEffect());
+        assertFalse(
+            MaceratorSupplement.classify(REFS, TIN_SOURCE, COPPER, COPPER, REDSTONE)
+                .hasEffect());
     }
 
     @Test
     public void copperPlusTinSourceGivesBronze() {
-        MaceratorSupplement.Outcome outcome = MaceratorSupplement
-            .classify(REFS, TIN_SOURCE, COPPER, COPPER, TIN_ORE);
+        MaceratorSupplement.Outcome outcome = MaceratorSupplement.classify(REFS, TIN_SOURCE, COPPER, COPPER, TIN_ORE);
 
         assertTrue(outcome.hasEffect());
         assertEquals(MaceratorSupplement.Kind.BRONZE, outcome.kind);
         assertEquals(4, outcome.usesPerSupplement);
         assertEquals(0, outcome.inputDrain);
         assertEquals(1, outcome.outputs.size());
-        assertTrue(outcome.outputs.get(0).isItemEqual(BRONZE));
+        assertTrue(
+            outcome.outputs.get(0)
+                .isItemEqual(BRONZE));
         assertEquals(1, outcome.outputs.get(0).stackSize);
     }
 
@@ -116,7 +121,9 @@ public class MaceratorSupplementTest {
 
     @Test
     public void copperPlusNonTinSupplementHasNoEffect() {
-        assertFalse(MaceratorSupplement.classify(REFS, TIN_SOURCE, COPPER, COPPER, SAND).hasEffect());
+        assertFalse(
+            MaceratorSupplement.classify(REFS, TIN_SOURCE, COPPER, COPPER, SAND)
+                .hasEffect());
     }
 
     @Test
@@ -127,21 +134,24 @@ public class MaceratorSupplementTest {
         assertEquals(MaceratorSupplement.Kind.QUARTZ, outcome.kind);
         assertEquals(1, outcome.usesPerSupplement);
         assertEquals(2, outcome.outputs.get(0).stackSize);
-        assertTrue(outcome.outputs.get(0).isItemEqual(QUARTZ_TWO));
+        assertTrue(
+            outcome.outputs.get(0)
+                .isItemEqual(QUARTZ_TWO));
     }
 
     @Test
     public void quartzSupplementWorksWithoutABaseRecipe() {
         // result == null models "the IC2 macerator has no recipe for this input at all"
-        MaceratorSupplement.Outcome outcome = MaceratorSupplement
-            .classify(REFS, TIN_SOURCE, QUARTZ_ORE, null, SAND);
+        MaceratorSupplement.Outcome outcome = MaceratorSupplement.classify(REFS, TIN_SOURCE, QUARTZ_ORE, null, SAND);
 
         assertEquals(MaceratorSupplement.Kind.QUARTZ, outcome.kind);
     }
 
     @Test
     public void quartzOrePlusOtherSupplementHasNoEffect() {
-        assertFalse(MaceratorSupplement.classify(REFS, TIN_SOURCE, QUARTZ_ORE, QUARTZ_ORE, REDSTONE).hasEffect());
+        assertFalse(
+            MaceratorSupplement.classify(REFS, TIN_SOURCE, QUARTZ_ORE, QUARTZ_ORE, REDSTONE)
+                .hasEffect());
     }
 
     @Test
@@ -152,7 +162,9 @@ public class MaceratorSupplementTest {
         assertEquals(MaceratorSupplement.Kind.GLOWSTONE, outcome.kind);
         assertEquals(1, outcome.usesPerSupplement);
         assertEquals(6, outcome.inputDrain);
-        assertTrue(outcome.outputs.get(0).isItemEqual(GLOWSTONE));
+        assertTrue(
+            outcome.outputs.get(0)
+                .isItemEqual(GLOWSTONE));
     }
 
     @Test
@@ -179,13 +191,17 @@ public class MaceratorSupplementTest {
                 .classify(REFS, TIN_SOURCE, COAL_DUST, COAL_DUST, water);
             assertEquals(MaceratorSupplement.Kind.HYDRATED_COAL, outcome.kind);
             assertEquals(8, outcome.usesPerSupplement);
-            assertTrue(outcome.outputs.get(0).isItemEqual(HYDRATED));
+            assertTrue(
+                outcome.outputs.get(0)
+                    .isItemEqual(HYDRATED));
         }
     }
 
     @Test
     public void coalDustPlusNonWaterHasNoEffect() {
-        assertFalse(MaceratorSupplement.classify(REFS, TIN_SOURCE, COAL_DUST, COAL_DUST, SAND).hasEffect());
+        assertFalse(
+            MaceratorSupplement.classify(REFS, TIN_SOURCE, COAL_DUST, COAL_DUST, SAND)
+                .hasEffect());
     }
 
     /**
@@ -197,7 +213,9 @@ public class MaceratorSupplementTest {
         assertFalse(
             MaceratorSupplement.classify(REFS, TIN_SOURCE, stack(NETHERRACK, 8), COPPER, REDSTONE)
                 .hasEffect());
-        assertFalse(MaceratorSupplement.classify(REFS, TIN_SOURCE, QUARTZ_ORE, COPPER, SAND).hasEffect());
+        assertFalse(
+            MaceratorSupplement.classify(REFS, TIN_SOURCE, QUARTZ_ORE, COPPER, SAND)
+                .hasEffect());
     }
 
     @Test

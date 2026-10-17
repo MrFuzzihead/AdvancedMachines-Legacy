@@ -13,9 +13,9 @@
 | 1 | **Critical** | Rotary Macerator supplement logic **deletes normal outputs** whenever anything sits in the supplement slot — **FIXED** (§1.1) | `TileEntityAdvancedMacerator.java:150-153` |
 | 2 | **Critical** | `getOutput()` re-creates an output after the helper deliberately refused (output full / no water) → **input consumed, output voided** — **FIXED** (§1.2) | `TileEntityAdvancedMacerator.java:115-130` |
 | 3 | **Critical** | Supplement slot click handler checks the **container slot index 8** (a player hotbar slot) instead of the supplement slot (index 44) → **deletes a player item** | `ContainerAdvancedMacerator.java:22-35` |
-| 4 | **High** | Speed hack **adds progress for free when the machine has no energy** → up to 10× speed while many progress ticks cost no EU | `CommonLogicAdvancedMachines.java:129-152` |
+| 4 | **High** | Speed hack **adds progress for free when the machine has no energy** → up to 10× speed while many progress ticks cost no EU — **FIXED** (§1.4) | `CommonLogicAdvancedMachines.java:129-152` |
 | 5 | **High** | Progress is manipulated via **reflection**; failure silently disables speed and also disables the only guard on the dummy-redstone path — **FIXED** (§1.5) | `CommonLogicAdvancedMachines.java:29-56, 129-159` |
-| 6 | **High** | Redstone "stall" injects a fake **dirt** `RecipeOutput`; can crash (`consume without a processing result`) or emit dirt in edge cases | `CommonLogicAdvancedMachines.java:26, 75-115, 117-127` |
+| 6 | **High** | Redstone "stall" injects a fake **dirt** `RecipeOutput`; can crash (`consume without a processing result`) or emit dirt in edge cases — **FIXED** (§1.6) | `CommonLogicAdvancedMachines.java:26, 75-115, 117-127` |
 | 7 | **High** | Combined Recycler bypasses the base recycler's **1-in-8 scrap chance** → 8× scrap yield | `TileEntityAdvancedRecycler.java:57-60` vs IC2 `TileEntityRecycler.operateOnce` |
 | 8 | **High** | Mining drops the **IC2 basic machine block** (`blockMachine:0`), not the advanced machine (`:12`) the code intends | `BlockAdvancedMachines.java:213-216` + missing `damageDropped` |
 | 9 | **High** | Client icon table is the **IC2 1.6.4** table; reflection target no longer exists → wrong face textures for 12/36 (side, facing) pairs — **FIXED** (§1.9) | `client/AdvancedMachinesClient.java:21-33` |
@@ -479,7 +479,7 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 |---|---|---|
 | 1 | Test harness (JUnit), `MachineMath` extraction, speed/math tests, config validation (§1.14) | ✅ done |
 | 2 | Macerator supplement correctness (§1.1, §1.2, §1.10, §1.12) | ✅ done |
-| 3 | Speed energy gating + redstone stall removal (§1.4, §1.6) | ⬜ pending |
+| 3 | Speed energy gating + redstone stall removal (§1.4, §1.6) | ✅ done |
 | 4 | Container/block/index/drops robustness (§1.3, §1.8, §1.11, §1.13) | ⬜ pending |
 | 5 | Recycler scrap chance + polish/localization/build metadata (§1.7, §4, §7, §1.15) | ⬜ pending |
 
@@ -515,3 +515,19 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 * Tests: 16 pure decision-table tests + 10 tests that drive the real tile entity against a throw-away
   `BasicMachineRecipeManager`, covering the output-preservation regression, the blocked-output case,
   the four supplement rules, the netherrack drain and the NBT round trip.
+
+### Batch 3 details (done)
+
+* Extracted the config values into `AdvancedMachineSettings` (with `DEFAULTS`) so the helper no longer
+  reads `ModAdvancedMachines.instance` fields directly. `ModAdvancedMachines` builds the settings in
+  `preInit` after `validateConfig()`.
+* `CommonLogicAdvancedMachines.updateEntity(IProgressAccess, boolean ranThisTick)` now grants extra
+  progress **only on ticks the base machine actually ran and paid EU for**. The old
+  `runningEmpty`-based branch advanced (and banked) progress for an under-powered machine, letting it
+  run at up to 10x speed on a fraction of the intended energy. §1.4.
+* Deleted the fake dirt `RecipeOutput`/`runningEmpty` machinery. A redstone signal now simply idles
+  the machine: `getOutput()` returns `null` with status `STALLED`, so the base resets progress, draws
+  no EU and the speed ramp decays. This also removes the `consume without a processing result` crash
+  and the dirt-output path entirely. §1.6.
+* Tests: 5 new tests for the shared logic (extra progress only while running, no idle progress, ramp
+  up/down, redstone stall, power-factor scaling).

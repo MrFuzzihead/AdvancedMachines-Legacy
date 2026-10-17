@@ -3,7 +3,6 @@ package atomicstryker.ic2.advancedmachines;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
@@ -27,28 +26,36 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
         NO_RECIPE,
         /** A recipe exists but none of the output slots (or the fluid tank) can hold the result. */
         NOT_STORABLE,
-        /** The machine is redstone-powered and idles; the dummy output is returned. */
+        /** The machine is redstone-powered and idles at zero cost. */
         STALLED,
         /** A real recipe result is available. */
         READY
     }
 
-    private ModAdvancedMachines mod;
+    private final AdvancedMachineSettings settings;
     private final ArrayList<InvSlotOutput> outSlotList;
 
-    private boolean runningEmpty;
     private int speed;
     private final String dataFormat;
     private final int dataScaling;
-    private final RecipeOutput dummyOut = new RecipeOutput(new NBTTagCompound(), new ItemStack(Blocks.dirt));
+
     private OutputStatus lastOutputStatus = OutputStatus.NO_INPUT;
 
     public CommonLogicAdvancedMachines(String dF, int dS) {
-        mod = ModAdvancedMachines.instance;
+        this(dF, dS, currentSettings());
+    }
+
+    CommonLogicAdvancedMachines(String dF, int dS, AdvancedMachineSettings settings) {
+        this.settings = settings;
         outSlotList = new ArrayList<InvSlotOutput>();
         speed = 0;
         dataFormat = dF;
         dataScaling = dS;
+    }
+
+    private static AdvancedMachineSettings currentSettings() {
+        ModAdvancedMachines instance = ModAdvancedMachines.instance;
+        return instance != null ? instance.getSettings() : AdvancedMachineSettings.DEFAULTS;
     }
 
     @Override
@@ -77,6 +84,19 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     }
 
     public RecipeOutput getOutput(TileEntityStandardMachine te) {
+        return getOutput(te, isRedstonePowered(te));
+    }
+
+    /**
+     * @param powered whether the machine currently receives a redstone signal. While powered the
+     *                machine idles: no progress, no energy use, and the speed ramp decays.
+     */
+    RecipeOutput getOutput(TileEntityStandardMachine te, boolean powered) {
+        if (powered) {
+            lastOutputStatus = OutputStatus.STALLED;
+            return null;
+        }
+
         RecipeOutput ic2Output = null;
         boolean canStash = false;
         boolean hasRecipe = false;
@@ -107,7 +127,6 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
         }
 
         if (ic2Output != null) {
-            runningEmpty = false;
             lastOutputStatus = OutputStatus.READY;
             return ic2Output;
         }
@@ -118,13 +137,6 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
             lastOutputStatus = OutputStatus.NO_RECIPE;
         } else {
             lastOutputStatus = OutputStatus.NOT_STORABLE;
-        }
-
-        if (te.hasWorldObj() && te.getWorldObj()
-            .isBlockIndirectlyGettingPowered(te.xCoord, te.yCoord, te.zCoord)) {
-            runningEmpty = true;
-            lastOutputStatus = OutputStatus.STALLED;
-            return dummyOut;
         }
 
         return null;
@@ -156,28 +168,32 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     }
 
     public void updateEntity(TileEntityStandardMachine te) {
-        if (!(te instanceof IProgressAccess)) {
+        if (te instanceof IProgressAccess) {
+            updateEntity((IProgressAccess) te, te.getActive());
+        }
+    }
+
+    /**
+     * Grants the extra progress ticks for this tick.
+     *
+     * @param ranThisTick whether the base IC2 machine actually ran and paid EU this tick. Extra
+     *                    progress is only granted then: the old implementation added it whenever the
+     *                    machine was not in the redstone "running empty" state, which let an
+     *                    under-powered machine advance (and even bank) progress for free.
+     */
+    void updateEntity(IProgressAccess progress, boolean ranThisTick) {
+        speed = MachineMath.rampSpeed(speed, settings.speedUpTicks, ranThisTick);
+        if (!ranThisTick) {
             return;
         }
-        IProgressAccess progress = (IProgressAccess) te;
 
-        speed = MachineMath.rampSpeed(speed, mod.maxMachineSpeedUpTicks, te.getActive());
-
-        if (runningEmpty) {
-            progress.setRawProgress((short) 0);
-            return;
-        }
-
-        // progress typically goes from 0(start) to 400,500(operation end) and gets incremented by 1
-        // every tick. Additionally, setOverClockRates may mess with it and further increment it. The
-        // goal here is to increase the base processing speed to up to N*100% by calculating the speed.
-        short extraProgress = MachineMath
-            .extraProgressTicks(speed, mod.maxMachineSpeedUpTicks, mod.maxMachineSpeedUpFactor);
+        short extraProgress = MachineMath.extraProgressTicks(speed, settings.speedUpTicks,
+            settings.speedUpFactor);
         progress.setRawProgress((short) (progress.getRawProgress() + extraProgress));
     }
 
     public void setOverclockRates(TileEntityStandardMachine te) {
-        te.energyConsume = MachineMath.scaledEnergyConsume(te.energyConsume, mod.machinePowerDrawFactor);
+        te.energyConsume = MachineMath.scaledEnergyConsume(te.energyConsume, settings.powerDrawFactor);
 
         int overclockers = 0;
         for (int i = 0; i < te.upgradeSlot.size(); i++) {
@@ -197,6 +213,12 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     @Override
     public ArrayList<InvSlotOutput> getOutputSlots() {
         return outSlotList;
+    }
+
+    private static boolean isRedstonePowered(TileEntityStandardMachine te) {
+        return te.hasWorldObj()
+            && te.getWorldObj()
+                .isBlockIndirectlyGettingPowered(te.xCoord, te.yCoord, te.zCoord);
     }
 
 }

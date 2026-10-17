@@ -51,9 +51,7 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
     public int maxMachineSpeedUpTicks;
     public double machinePowerDrawFactor;
 
-    public static final int DEFAULT_MAX_SPEED_UP_FACTOR = 10;
-    public static final int DEFAULT_MAX_SPEED_UP_TICKS = 10000;
-    public static final double DEFAULT_MACHINE_POWER_DRAW_FACTOR = 3.0d;
+    private AdvancedMachineSettings settings = AdvancedMachineSettings.DEFAULTS;
 
     private static final String KEY_MAX_SPEED_UP_FACTOR = "maxMachineSpeedUpFactor";
     private static final String KEY_MAX_SPEED_UP_TICKS = "maxMachineSpeedUpTicks";
@@ -79,25 +77,30 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
             .get(
                 Configuration.CATEGORY_GENERAL,
                 KEY_MAX_SPEED_UP_FACTOR,
-                DEFAULT_MAX_SPEED_UP_FACTOR,
+                AdvancedMachineSettings.DEFAULT_SPEED_UP_FACTOR,
                 "Advanced Machines will reach X times the speed of normal machines")
-            .getInt(DEFAULT_MAX_SPEED_UP_FACTOR);
+            .getInt(AdvancedMachineSettings.DEFAULT_SPEED_UP_FACTOR);
         maxMachineSpeedUpTicks = config
             .get(
                 Configuration.CATEGORY_GENERAL,
                 KEY_MAX_SPEED_UP_TICKS,
-                DEFAULT_MAX_SPEED_UP_TICKS,
+                AdvancedMachineSettings.DEFAULT_SPEED_UP_TICKS,
                 "Advanced Machines will take X ingame ticks to reach max speed")
-            .getInt(DEFAULT_MAX_SPEED_UP_TICKS);
+            .getInt(AdvancedMachineSettings.DEFAULT_SPEED_UP_TICKS);
         machinePowerDrawFactor = config
             .get(
                 Configuration.CATEGORY_GENERAL,
                 KEY_MACHINE_POWER_DRAW_FACTOR,
-                DEFAULT_MACHINE_POWER_DRAW_FACTOR,
+                AdvancedMachineSettings.DEFAULT_POWER_DRAW_FACTOR,
                 "Advanced Machines will draw X times the normal machines power")
-            .getDouble(DEFAULT_MACHINE_POWER_DRAW_FACTOR);
+            .getDouble(AdvancedMachineSettings.DEFAULT_POWER_DRAW_FACTOR);
 
         validateConfig();
+        settings = new AdvancedMachineSettings(maxMachineSpeedUpFactor, maxMachineSpeedUpTicks, machinePowerDrawFactor);
+    }
+
+    public AdvancedMachineSettings getSettings() {
+        return settings;
     }
 
     /**
@@ -112,30 +115,38 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
                     + ", maxMachineSpeedUpTicks="
                     + maxMachineSpeedUpTicks
                     + "); falling back to "
-                    + DEFAULT_MAX_SPEED_UP_FACTOR
+                    + AdvancedMachineSettings.DEFAULT_SPEED_UP_FACTOR
                     + "x over "
-                    + DEFAULT_MAX_SPEED_UP_TICKS
+                    + AdvancedMachineSettings.DEFAULT_SPEED_UP_TICKS
                     + " ticks.");
-            maxMachineSpeedUpFactor = DEFAULT_MAX_SPEED_UP_FACTOR;
-            maxMachineSpeedUpTicks = DEFAULT_MAX_SPEED_UP_TICKS;
-            config.get(Configuration.CATEGORY_GENERAL, KEY_MAX_SPEED_UP_FACTOR, DEFAULT_MAX_SPEED_UP_FACTOR)
-                .set(DEFAULT_MAX_SPEED_UP_FACTOR);
-            config.get(Configuration.CATEGORY_GENERAL, KEY_MAX_SPEED_UP_TICKS, DEFAULT_MAX_SPEED_UP_TICKS)
-                .set(DEFAULT_MAX_SPEED_UP_TICKS);
+            maxMachineSpeedUpFactor = AdvancedMachineSettings.DEFAULT_SPEED_UP_FACTOR;
+            maxMachineSpeedUpTicks = AdvancedMachineSettings.DEFAULT_SPEED_UP_TICKS;
+            config
+                .get(
+                    Configuration.CATEGORY_GENERAL,
+                    KEY_MAX_SPEED_UP_FACTOR,
+                    AdvancedMachineSettings.DEFAULT_SPEED_UP_FACTOR)
+                .set(AdvancedMachineSettings.DEFAULT_SPEED_UP_FACTOR);
+            config
+                .get(
+                    Configuration.CATEGORY_GENERAL,
+                    KEY_MAX_SPEED_UP_TICKS,
+                    AdvancedMachineSettings.DEFAULT_SPEED_UP_TICKS)
+                .set(AdvancedMachineSettings.DEFAULT_SPEED_UP_TICKS);
         }
         if (!MachineMath.isValidPowerDrawFactor(machinePowerDrawFactor)) {
             System.out.println(
                 "[AdvancedMachines] Invalid machinePowerDrawFactor (" + machinePowerDrawFactor
                     + "); falling back to "
-                    + DEFAULT_MACHINE_POWER_DRAW_FACTOR
+                    + AdvancedMachineSettings.DEFAULT_POWER_DRAW_FACTOR
                     + ".");
-            machinePowerDrawFactor = DEFAULT_MACHINE_POWER_DRAW_FACTOR;
+            machinePowerDrawFactor = AdvancedMachineSettings.DEFAULT_POWER_DRAW_FACTOR;
             config
                 .get(
                     Configuration.CATEGORY_GENERAL,
                     KEY_MACHINE_POWER_DRAW_FACTOR,
-                    DEFAULT_MACHINE_POWER_DRAW_FACTOR)
-                .set(DEFAULT_MACHINE_POWER_DRAW_FACTOR);
+                    AdvancedMachineSettings.DEFAULT_POWER_DRAW_FACTOR)
+                .set(AdvancedMachineSettings.DEFAULT_POWER_DRAW_FACTOR);
         }
     }
 

@@ -575,3 +575,21 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 * Still open (low priority): `ItemAdvancedMachine.getSubItems` does not filter config-disabled
   machines; the GUI constructors take an unused tile-entity parameter; the custom GUIs do not show
   IC2's charge/upgrade tooltips.
+
+### Remaining low-priority items (not yet done)
+
+Everything in the executive summary's Critical/High/Medium list is now addressed. These are the
+deliberately deferred, low-impact leftovers:
+
+* §1.13/§3.4: the block does not close open GUIs when broken (IC2's `onBlockPreDestroy` does). Stale
+  client containers are harmless today but would be nice to close.
+* §3.6: `onNeighborBlockChange` is not forwarded to `TileEntityBlock.onNeighborUpdate`; inert for
+  these machines because they register no IC2 components.
+* §2.6: `getInventoryName()`/`getGui()` still inherit the base machine names/screens, so WAILA/NEI
+  show "Macerator" etc. and any direct `IHasGui` use would open the base GUI.
+* §2.6: the >6-overclocker guard is still an explosion; an insert-time cap (rejecting the upgrade or
+  limiting the slot stack size) would be more robust.
+* §7: `ItemAdvancedMachine.getSubItems` does not filter config-disabled machines; the GUI constructors
+  keep an unused tile-entity parameter; the custom GUIs omit IC2's charge/upgrade tooltips.
+* §5: performance polish — cache the supplement recipe lookups per input, and avoid the double tile
+  entity lookup in `BlockAdvancedMachines.getIcon`.

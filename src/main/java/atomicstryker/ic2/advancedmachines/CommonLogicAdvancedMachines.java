@@ -39,6 +39,8 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     private final String dataFormat;
     private final int dataScaling;
 
+    private boolean overclockExplosionTriggered;
+
     private OutputStatus lastOutputStatus = OutputStatus.NO_INPUT;
 
     public CommonLogicAdvancedMachines(String dF, int dS) {
@@ -210,9 +212,15 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
                 }
             }
         }
-        if (overclockers > 6) {
-            te.getWorldObj()
-                .createExplosion(null, te.xCoord + 0.5f, te.yCoord, te.zCoord + 0.5f, 3f, true);
+        if (MachineMath.shouldTriggerOverclockerExplosion(
+            overclockers,
+            MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD,
+            overclockExplosionTriggered)) {
+            overclockExplosionTriggered = true;
+            if (te.getWorldObj() != null && !te.getWorldObj().isRemote) {
+                te.getWorldObj()
+                    .createExplosion(null, te.xCoord + 0.5f, te.yCoord, te.zCoord + 0.5f, 3f, true);
+            }
         }
     }
 

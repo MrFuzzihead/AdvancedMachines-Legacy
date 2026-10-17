@@ -98,4 +98,9 @@ public class TileEntityAdvancedRecycler extends TileEntityRecycler implements IA
         progress = value;
     }
 
+    @Override
+    public String getInventoryName() {
+        return "Combined Recycler";
+    }
+
 }

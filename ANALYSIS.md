@@ -22,7 +22,7 @@
 | 10 | **Medium** | Macerator supplement state not persisted; unguarded stack math can NPE / go negative / leave 0-size phantom stacks — **FIXED** (§1.10) | `TileEntityAdvancedMacerator.java:201-217` |
 | 11 | **Medium** | `isItemValidForSlot` / `canExtractItem` mix up legacy `oldStartIndex` with live inventory indexes → automation can pull upgrades out of the 3rd upgrade slot — **FIXED** (§1.11) | `TileEntityAdvancedMacerator.java:240-256` |
 | 12 | **Medium** | Identity recipes are pushed into the **global** `Recipes.macerator`, affecting plain IC2 Macerators, and use an uncacheable stateful `IRecipeInput` hack — **FIXED** (§1.12) | `ModAdvancedMachines.java:125-131, 177-209` |
-| 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop — **FIXED** (§1.13; GUI-close-on-break still open) | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
+| 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop — **FIXED** (§1.13 / §3.4, incl. GUI close on break) | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
 | 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) — **FIXED** (§1.14; validation + boosted `maxEnergy` sizing) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
 | 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers — **MOSTLY FIXED** (§1.15/§4; GUI charge tooltips + creative filtering still open) | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
 
@@ -482,6 +482,7 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 | 3 | Speed energy gating + redstone stall removal (§1.4, §1.6) | ✅ done |
 | 4 | Container/block/index/drops robustness (§1.3, §1.8, §1.11, §1.13) | ✅ done |
 | 5 | Recycler scrap chance + polish/localization/build metadata (§1.7, §4, §7, §1.15) | ✅ done |
+| 6 | Interop/robustness leftovers (§2.6, §3.4, §3.6) | ✅ done |
 
 ### Batch 1 details (done)
 
@@ -593,3 +594,17 @@ deliberately deferred, low-impact leftovers:
   keep an unused tile-entity parameter; the custom GUIs omit IC2's charge/upgrade tooltips.
 * §5: performance polish — cache the supplement recipe lookups per input, and avoid the double tile
   entity lookup in `BlockAdvancedMachines.getIcon`.
+
+### Batch 6 details (done)
+
+* §2.6: every machine now overrides `getInventoryName()` (WAILA/NEI show "Rotary Macerator" etc.
+  instead of the base IC2 name).
+* §2.6: the >6-overclocker punishment now fires **at most once per machine** and only server-side,
+  instead of exploding again on every `setOverclockRates()` call (i.e. every inventory change).
+  The decision is extracted to `MachineMath.shouldTriggerOverclockerExplosion` and unit tested.
+* §3.6: `onNeighborBlockChange` is forwarded to `TileEntityBlock.onNeighborUpdate`, matching IC2.
+* §3.4/§1.13: `onBlockPreDestroy` now closes any player container whose base is the machine, like
+  IC2's `BlockMultiID`, so nobody keeps interacting with a stale container after the block is gone.
+* §5: `BlockAdvancedMachines.getIcon` fetches the tile entity once instead of twice per face.
+* Tests: `MachineNamesTest` for 4 machines (the ore washer needs `FluidRegistry`/the FML block
+  registry and is covered by the in-game checklist instead) and the overclocker-roll test.

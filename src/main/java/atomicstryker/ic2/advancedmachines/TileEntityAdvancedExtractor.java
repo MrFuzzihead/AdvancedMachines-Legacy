@@ -89,4 +89,9 @@ public class TileEntityAdvancedExtractor extends TileEntityExtractor implements 
         progress = value;
     }
 
+    @Override
+    public String getInventoryName() {
+        return "Centrifuge Extractor";
+    }
+
 }

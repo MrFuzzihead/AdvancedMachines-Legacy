@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.EnumCreatureType;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -22,7 +23,9 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import ic2.api.item.IC2Items;
 import ic2.api.tile.IWrenchable;
+import ic2.core.ContainerBase;
 import ic2.core.IC2;
+import ic2.core.IHasGui;
 import ic2.core.block.BlockBase;
 import ic2.core.block.TileEntityBlock;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
@@ -142,7 +145,8 @@ public class BlockAdvancedMachines extends BlockContainer {
 
         // IC2's own face mapping, indexed [facing][side]. The +6 selects the running (ON) texture set.
         int subIndex = BlockBase.getTextureSubIndex(facing, blockSide);
-        if (isActive(world, x, y, z)) {
+        boolean active = te instanceof TileEntityBlock && ((TileEntityBlock) te).getActive();
+        if (active) {
             subIndex += 6;
         }
         return iconBuffer[blockMeta][subIndex];
@@ -311,6 +315,37 @@ public class BlockAdvancedMachines extends BlockContainer {
     @Override
     public boolean canCreatureSpawn(EnumCreatureType type, IBlockAccess world, int x, int y, int z) {
         return false;
+    }
+
+    @Override
+    public void onNeighborBlockChange(World world, int x, int y, int z, Block neighbor) {
+        super.onNeighborBlockChange(world, x, y, z, neighbor);
+        TileEntity te = world.getTileEntity(x, y, z);
+        if (te instanceof TileEntityBlock) {
+            ((TileEntityBlock) te).onNeighborUpdate(neighbor);
+        }
+    }
+
+    /**
+     * Closes any open GUI for this machine before it is destroyed, mirroring IC2's BlockMultiID.
+     * Without this a player could keep interacting with a stale container after the block is removed.
+     */
+    @Override
+    public void onBlockPreDestroy(World world, int x, int y, int z, int meta) {
+        super.onBlockPreDestroy(world, x, y, z, meta);
+        TileEntity te = world.getTileEntity(x, y, z);
+        if (!(te instanceof IHasGui)) {
+            return;
+        }
+        for (Object obj : world.playerEntities) {
+            if (!(obj instanceof EntityPlayerMP)) {
+                continue;
+            }
+            EntityPlayerMP player = (EntityPlayerMP) obj;
+            if (player.openContainer instanceof ContainerBase && ((ContainerBase<?>) player.openContainer).base == te) {
+                player.closeScreen();
+            }
+        }
     }
 
     @Override

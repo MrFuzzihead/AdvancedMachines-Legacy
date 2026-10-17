@@ -85,4 +85,9 @@ public class TileEntityAdvancedCompressor extends TileEntityCompressor implement
         progress = value;
     }
 
+    @Override
+    public String getInventoryName() {
+        return "Singularity Compressor";
+    }
+
 }

@@ -86,4 +86,9 @@ public class TileEntityAdvancedOreWasher extends TileEntityOreWashing implements
         progress = value;
     }
 
+    @Override
+    public String getInventoryName() {
+        return "Rotary Ore Washer";
+    }
+
 }

@@ -126,6 +126,18 @@ public class MachineMathTest {
     }
 
     @Test
+    public void overclockerExplosionTriggersAtMostOnce() {
+        assertFalse(
+            MachineMath.shouldTriggerOverclockerExplosion(6, MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD, false));
+        assertTrue(
+            MachineMath.shouldTriggerOverclockerExplosion(7, MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD, false));
+        assertFalse(
+            MachineMath.shouldTriggerOverclockerExplosion(7, MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD, true));
+        assertFalse(
+            MachineMath.shouldTriggerOverclockerExplosion(100, MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD, true));
+    }
+
+    @Test
     public void configValidation() {
         assertTrue(MachineMath.isValidSpeedConfig(10, 10000));
         assertTrue(MachineMath.isValidSpeedConfig(2, 1));

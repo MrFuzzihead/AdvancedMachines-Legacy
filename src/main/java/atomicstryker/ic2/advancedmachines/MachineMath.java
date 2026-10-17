@@ -89,6 +89,18 @@ public final class MachineMath {
         return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, scaled));
     }
 
+    /** Installing more than this many overclockers triggers the mod's punishment. */
+    public static final int OVERCLOCKER_EXPLOSION_THRESHOLD = 6;
+
+    /**
+     * @return true when the overclocker punishment should fire. Guarded by {@code alreadyTriggered}
+     *         so a machine whose inventory keeps changing does not explode on every rate
+     *         recalculation.
+     */
+    public static boolean shouldTriggerOverclockerExplosion(int overclockers, int threshold, boolean alreadyTriggered) {
+        return !alreadyTriggered && overclockers > threshold;
+    }
+
     /**
      * One-in-{@code chance} roll, mirroring IC2's recycler scrap chance. A non-positive chance is
      * treated as "always" so it can never throw from {@link Random#nextInt(int)}.

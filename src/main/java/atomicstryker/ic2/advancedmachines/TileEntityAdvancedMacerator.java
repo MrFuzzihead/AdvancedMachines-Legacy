@@ -321,6 +321,11 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
         progress = value;
     }
 
+    @Override
+    public String getInventoryName() {
+        return "Rotary Macerator";
+    }
+
     /** Whether a supplement effect was applied and how much extra input it consumed. */
     private static final class SupplementApplication {
 

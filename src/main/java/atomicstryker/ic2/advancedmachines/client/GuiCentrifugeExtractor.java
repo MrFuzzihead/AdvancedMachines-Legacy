@@ -8,7 +8,6 @@ import org.lwjgl.opengl.GL11;
 
 import atomicstryker.ic2.advancedmachines.ContainerAdvancedMachine;
 import atomicstryker.ic2.advancedmachines.IAdvancedMachine;
-import atomicstryker.ic2.advancedmachines.TileEntityAdvancedExtractor;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
 public class GuiCentrifugeExtractor extends GuiContainer {
@@ -17,8 +16,7 @@ public class GuiCentrifugeExtractor extends GuiContainer {
 
     private ContainerAdvancedMachine<TileEntityStandardMachine> container;
 
-    public GuiCentrifugeExtractor(ContainerAdvancedMachine<TileEntityStandardMachine> csm,
-        TileEntityAdvancedExtractor te) {
+    public GuiCentrifugeExtractor(ContainerAdvancedMachine<TileEntityStandardMachine> csm) {
         super(csm);
         container = csm;
     }

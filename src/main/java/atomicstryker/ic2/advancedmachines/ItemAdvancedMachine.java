@@ -51,8 +51,11 @@ public class ItemAdvancedMachine extends ItemBlock {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public void getSubItems(Item par1, CreativeTabs par2CreativeTabs, List par3List) {
+        ModAdvancedMachines mod = ModAdvancedMachines.instance;
         for (int meta = 0; meta < BlockAdvancedMachines.MACHINE_COUNT; meta++) {
-            par3List.add(new ItemStack(par1, 1, meta));
+            if (mod == null || mod.isMachineEnabled(meta)) {
+                par3List.add(new ItemStack(par1, 1, meta));
+            }
         }
     }
 }

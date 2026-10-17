@@ -8,7 +8,6 @@ import org.lwjgl.opengl.GL11;
 
 import atomicstryker.ic2.advancedmachines.ContainerAdvancedMachine;
 import atomicstryker.ic2.advancedmachines.IAdvancedMachine;
-import atomicstryker.ic2.advancedmachines.TileEntityAdvancedCompressor;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
 public class GuiSingularityCompressor extends GuiContainer {
@@ -17,8 +16,7 @@ public class GuiSingularityCompressor extends GuiContainer {
 
     private ContainerAdvancedMachine<TileEntityStandardMachine> container;
 
-    public GuiSingularityCompressor(ContainerAdvancedMachine<TileEntityStandardMachine> csm,
-        TileEntityAdvancedCompressor te) {
+    public GuiSingularityCompressor(ContainerAdvancedMachine<TileEntityStandardMachine> csm) {
         super(csm);
         container = csm;
     }

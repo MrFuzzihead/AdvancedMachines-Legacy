@@ -8,7 +8,6 @@ import org.lwjgl.opengl.GL11;
 
 import atomicstryker.ic2.advancedmachines.ContainerAdvancedMachine;
 import atomicstryker.ic2.advancedmachines.IAdvancedMachine;
-import atomicstryker.ic2.advancedmachines.TileEntityAdvancedRecycler;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
 public class GuiCombinedRecycler extends GuiContainer {
@@ -19,7 +18,7 @@ public class GuiCombinedRecycler extends GuiContainer {
 
     private ContainerAdvancedMachine<TileEntityStandardMachine> container;
 
-    public GuiCombinedRecycler(ContainerAdvancedMachine<TileEntityStandardMachine> csm, TileEntityAdvancedRecycler te) {
+    public GuiCombinedRecycler(ContainerAdvancedMachine<TileEntityStandardMachine> csm) {
         super(csm);
         container = csm;
     }

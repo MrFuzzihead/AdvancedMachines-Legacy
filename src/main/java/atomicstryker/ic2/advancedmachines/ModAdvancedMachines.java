@@ -57,6 +57,11 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
     private static final String KEY_MAX_SPEED_UP_TICKS = "maxMachineSpeedUpTicks";
     private static final String KEY_MACHINE_POWER_DRAW_FACTOR = "machinePowerDrawFactor";
 
+    private static final String[] MACHINE_ENABLED_KEYS = { "Rotary Macerator Enabled", "Singularity Compressor Enabled",
+        "Centrifuge Extractor Enabled", "Combined Recycler Enabled", "Rotary Ore Washer Enabled" };
+
+    private final boolean[] machineEnabled = new boolean[] { true, true, true, true, true };
+
     @EventHandler
     public void preInit(FMLPreInitializationEvent evt) {
         config = new Configuration(evt.getSuggestedConfigurationFile());
@@ -97,10 +102,27 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
 
         validateConfig();
         settings = new AdvancedMachineSettings(maxMachineSpeedUpFactor, maxMachineSpeedUpTicks, machinePowerDrawFactor);
+
+        for (int meta = 0; meta < machineEnabled.length; meta++) {
+            machineEnabled[meta] = config.get(Configuration.CATEGORY_GENERAL, MACHINE_ENABLED_KEYS[meta], true)
+                .getBoolean(true);
+        }
     }
 
     public AdvancedMachineSettings getSettings() {
         return settings;
+    }
+
+    /** @return whether the machine for {@code meta} is enabled in the config (defaults to true). */
+    public boolean isMachineEnabled(int meta) {
+        return meta < 0 || meta >= machineEnabled.length || machineEnabled[meta];
+    }
+
+    /** Test seam for {@link #isMachineEnabled(int)}. */
+    void setMachineEnabled(int meta, boolean enabled) {
+        if (meta >= 0 && meta < machineEnabled.length) {
+            machineEnabled[meta] = enabled;
+        }
     }
 
     /**
@@ -165,8 +187,7 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
 
     @EventHandler
     public void afterModsLoaded(FMLPostInitializationEvent evt) {
-        if (config.get(Configuration.CATEGORY_GENERAL, "Rotary Macerator Enabled", true)
-            .getBoolean(true)) {
+        if (machineEnabled[0]) {
             GameRegistry.addRecipe(
                 stackRotaryMacerator,
                 new Object[] { "CRC", "PMP", "PAP", Character.valueOf('C'), IC2Items.getItem("coil"),
@@ -180,8 +201,7 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
         // "X -> X" recipes to the global Recipes.macerator and therefore also affected plain IC2
         // macerators (they would waste power outputting the input unchanged).
 
-        if (config.get(Configuration.CATEGORY_GENERAL, "Singularity Compressor Enabled", true)
-            .getBoolean(true)) {
+        if (machineEnabled[1]) {
             GameRegistry.addRecipe(
                 stackSingularityCompressor,
                 new Object[] { "RGR", "MMM", "PAP", Character.valueOf('R'), Blocks.obsidian, Character.valueOf('G'),
@@ -190,8 +210,7 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
                     IC2Items.getItem("advancedMachine") });
         }
 
-        if (config.get(Configuration.CATEGORY_GENERAL, "Centrifuge Extractor Enabled", true)
-            .getBoolean(true)) {
+        if (machineEnabled[2]) {
             GameRegistry.addRecipe(
                 stackCentrifugeExtractor,
                 new Object[] { "CEC", "RMR", "PAP", Character.valueOf('C'), IC2Items.getItem("coil"),
@@ -201,8 +220,7 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
                     IC2Items.getItem("advancedMachine") });
         }
 
-        if (config.get(Configuration.CATEGORY_GENERAL, "Combined Recycler Enabled", true)
-            .getBoolean(true)) {
+        if (machineEnabled[3]) {
             GameRegistry.addRecipe(
                 stackCombinedRecycler,
                 new Object[] { " M ", "PEP", "PRP", Character.valueOf('M'), stackRotaryMacerator,
@@ -210,8 +228,7 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
                     IC2Items.getItem("plateiron"), Character.valueOf('R'), IC2Items.getItem("recycler") });
         }
 
-        if (config.get(Configuration.CATEGORY_GENERAL, "Rotary Ore Washer Enabled", true)
-            .getBoolean(true)) {
+        if (machineEnabled[4]) {
             GameRegistry.addRecipe(
                 stackRotaryOreWasher,
                 new Object[] { "CRC", "PWP", "PAP", Character.valueOf('C'), IC2Items.getItem("coil"),

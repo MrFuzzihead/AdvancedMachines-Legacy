@@ -608,3 +608,14 @@ deliberately deferred, low-impact leftovers:
 * §5: `BlockAdvancedMachines.getIcon` fetches the tile entity once instead of twice per face.
 * Tests: `MachineNamesTest` for 4 machines (the ore washer needs `FluidRegistry`/the FML block
   registry and is covered by the in-game checklist instead) and the overclocker-roll test.
+
+### Batch 7 details (done)
+
+* The per-machine "… Enabled" config flags are now read once in `preInit` into a `machineEnabled[]`
+  array, used both for recipe registration and for `ItemAdvancedMachine.getSubItems`, so a disabled
+  machine no longer appears in the creative tab (`ModAdvancedMachines.isMachineEnabled`).
+* The five GUI constructors no longer take the unused tile-entity parameter, and
+  `AdvancedMachinesClient` was updated accordingly.
+* Tests: `ItemAdvancedMachineTest` (all machines listed when enabled; disabled machines hidden).
+* Still open (visual only, covered by the in-game checklist): the custom GUIs do not reproduce IC2's
+  charge/upgrade tooltips.

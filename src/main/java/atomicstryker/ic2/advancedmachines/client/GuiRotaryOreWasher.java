@@ -23,7 +23,7 @@ public class GuiRotaryOreWasher extends GuiContainer {
 
     private ContainerOreWashing container;
 
-    public GuiRotaryOreWasher(ContainerOreWashing containerOreWashing, TileEntityOreWashing te) {
+    public GuiRotaryOreWasher(ContainerOreWashing containerOreWashing) {
         super(containerOreWashing);
         container = containerOreWashing;
     }

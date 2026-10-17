@@ -28,25 +28,18 @@ public class AdvancedMachinesClient implements IProxy {
         TileEntity te = world.getTileEntity(x, y, z);
         if (te != null) {
             if (te instanceof TileEntityAdvancedMacerator) {
-                return new GuiRotaryMacerator(
-                    new ContainerAdvancedMacerator(player, (TileEntityAdvancedMacerator) te),
-                    (TileEntityAdvancedMacerator) te);
+                return new GuiRotaryMacerator(new ContainerAdvancedMacerator(player, (TileEntityAdvancedMacerator) te));
             } else if (te instanceof TileEntityAdvancedExtractor) {
                 return new GuiCentrifugeExtractor(
-                    new ContainerAdvancedMachine<TileEntityStandardMachine>(player, (TileEntityAdvancedExtractor) te),
-                    (TileEntityAdvancedExtractor) te);
+                    new ContainerAdvancedMachine<TileEntityStandardMachine>(player, (TileEntityAdvancedExtractor) te));
             } else if (te instanceof TileEntityAdvancedCompressor) {
                 return new GuiSingularityCompressor(
-                    new ContainerAdvancedMachine<TileEntityStandardMachine>(player, (TileEntityAdvancedCompressor) te),
-                    (TileEntityAdvancedCompressor) te);
+                    new ContainerAdvancedMachine<TileEntityStandardMachine>(player, (TileEntityAdvancedCompressor) te));
             } else if (te instanceof TileEntityAdvancedRecycler) {
                 return new GuiCombinedRecycler(
-                    new ContainerAdvancedMachine<TileEntityStandardMachine>(player, (TileEntityAdvancedRecycler) te),
-                    (TileEntityAdvancedRecycler) te);
+                    new ContainerAdvancedMachine<TileEntityStandardMachine>(player, (TileEntityAdvancedRecycler) te));
             } else if (te instanceof TileEntityAdvancedOreWasher) {
-                return new GuiRotaryOreWasher(
-                    new ContainerOreWashing(player, (TileEntityOreWashing) te),
-                    (TileEntityOreWashing) te);
+                return new GuiRotaryOreWasher(new ContainerOreWashing(player, (TileEntityOreWashing) te));
             }
         }
 

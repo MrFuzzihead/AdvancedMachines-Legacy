@@ -8,7 +8,6 @@ import org.lwjgl.opengl.GL11;
 
 import atomicstryker.ic2.advancedmachines.ContainerAdvancedMacerator;
 import atomicstryker.ic2.advancedmachines.IAdvancedMachine;
-import atomicstryker.ic2.advancedmachines.TileEntityAdvancedMacerator;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
 public class GuiRotaryMacerator extends GuiContainer {
@@ -17,7 +16,7 @@ public class GuiRotaryMacerator extends GuiContainer {
 
     private ContainerAdvancedMacerator container;
 
-    public GuiRotaryMacerator(ContainerAdvancedMacerator csm, TileEntityAdvancedMacerator te) {
+    public GuiRotaryMacerator(ContainerAdvancedMacerator csm) {
         super(csm);
         container = csm;
     }

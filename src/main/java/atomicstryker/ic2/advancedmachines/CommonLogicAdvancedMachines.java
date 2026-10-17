@@ -15,6 +15,24 @@ import ic2.core.item.ItemUpgradeModule;
 
 public class CommonLogicAdvancedMachines implements IAdvancedMachine {
 
+    /**
+     * Why {@link #getOutput(TileEntityStandardMachine)} returned what it did. Callers that need to
+     * distinguish "no recipe" from "the result does not fit" (the Rotary Macerator's supplement
+     * logic) can inspect this instead of having to re-probe the recipe manager.
+     */
+    public enum OutputStatus {
+        /** The input slot is empty. */
+        NO_INPUT,
+        /** There is an input but the machine has no recipe for it. */
+        NO_RECIPE,
+        /** A recipe exists but none of the output slots (or the fluid tank) can hold the result. */
+        NOT_STORABLE,
+        /** The machine is redstone-powered and idles; the dummy output is returned. */
+        STALLED,
+        /** A real recipe result is available. */
+        READY
+    }
+
     private ModAdvancedMachines mod;
     private final ArrayList<InvSlotOutput> outSlotList;
 
@@ -23,6 +41,7 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     private final String dataFormat;
     private final int dataScaling;
     private final RecipeOutput dummyOut = new RecipeOutput(new NBTTagCompound(), new ItemStack(Blocks.dirt));
+    private OutputStatus lastOutputStatus = OutputStatus.NO_INPUT;
 
     public CommonLogicAdvancedMachines(String dF, int dS) {
         mod = ModAdvancedMachines.instance;
@@ -60,9 +79,11 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     public RecipeOutput getOutput(TileEntityStandardMachine te) {
         RecipeOutput ic2Output = null;
         boolean canStash = false;
+        boolean hasRecipe = false;
         if (!te.inputSlot.isEmpty()) {
             ic2Output = te.inputSlot.process();
             if (ic2Output != null) {
+                hasRecipe = true;
                 for (int index = 0; index < outSlotList.size(); index++) {
                     if (outSlotList.get(index)
                         .canAdd(ic2Output.items)) {
@@ -87,27 +108,50 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
 
         if (ic2Output != null) {
             runningEmpty = false;
+            lastOutputStatus = OutputStatus.READY;
             return ic2Output;
+        }
+
+        if (te.inputSlot.isEmpty()) {
+            lastOutputStatus = OutputStatus.NO_INPUT;
+        } else if (!hasRecipe) {
+            lastOutputStatus = OutputStatus.NO_RECIPE;
+        } else {
+            lastOutputStatus = OutputStatus.NOT_STORABLE;
         }
 
         if (te.hasWorldObj() && te.getWorldObj()
             .isBlockIndirectlyGettingPowered(te.xCoord, te.yCoord, te.zCoord)) {
             runningEmpty = true;
+            lastOutputStatus = OutputStatus.STALLED;
             return dummyOut;
         }
 
         return null;
     }
 
+    public OutputStatus getLastOutputStatus() {
+        return lastOutputStatus;
+    }
+
+    /**
+     * Inserts a result into the first output slot that can hold it. Returns false when nothing was
+     * inserted (the caller should then not consume the input, or accept the loss).
+     */
+    public boolean addToOutputs(List<ItemStack> processResult) {
+        for (InvSlotOutput slot : outSlotList) {
+            if (slot.canAdd(processResult)) {
+                slot.add(processResult);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void operateOnce(TileEntityStandardMachine te, RecipeOutput output, List<ItemStack> processResult) {
         if (!te.inputSlot.isEmpty()) {
             te.inputSlot.consume();
-            for (InvSlotOutput slot : getOutputSlots()) {
-                if (slot.canAdd(processResult)) {
-                    slot.add(processResult);
-                    break;
-                }
-            }
+            addToOutputs(processResult);
         }
     }
 

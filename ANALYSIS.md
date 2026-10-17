@@ -10,8 +10,8 @@
 
 | # | Severity | Issue | Where |
 |---|----------|-------|-------|
-| 1 | **Critical** | Rotary Macerator supplement logic **deletes normal outputs** whenever anything sits in the supplement slot | `TileEntityAdvancedMacerator.java:150-153` |
-| 2 | **Critical** | `getOutput()` re-creates an output after the helper deliberately refused (output full / no water) → **input consumed, output voided** | `TileEntityAdvancedMacerator.java:115-130` |
+| 1 | **Critical** | Rotary Macerator supplement logic **deletes normal outputs** whenever anything sits in the supplement slot — **FIXED** (§1.1) | `TileEntityAdvancedMacerator.java:150-153` |
+| 2 | **Critical** | `getOutput()` re-creates an output after the helper deliberately refused (output full / no water) → **input consumed, output voided** — **FIXED** (§1.2) | `TileEntityAdvancedMacerator.java:115-130` |
 | 3 | **Critical** | Supplement slot click handler checks the **container slot index 8** (a player hotbar slot) instead of the supplement slot (index 44) → **deletes a player item** | `ContainerAdvancedMacerator.java:22-35` |
 | 4 | **High** | Speed hack **adds progress for free when the machine has no energy** → up to 10× speed while many progress ticks cost no EU | `CommonLogicAdvancedMachines.java:129-152` |
 | 5 | **High** | Progress is manipulated via **reflection**; failure silently disables speed and also disables the only guard on the dummy-redstone path — **FIXED** (§1.5) | `CommonLogicAdvancedMachines.java:29-56, 129-159` |
@@ -19,9 +19,9 @@
 | 7 | **High** | Combined Recycler bypasses the base recycler's **1-in-8 scrap chance** → 8× scrap yield | `TileEntityAdvancedRecycler.java:57-60` vs IC2 `TileEntityRecycler.operateOnce` |
 | 8 | **High** | Mining drops the **IC2 basic machine block** (`blockMachine:0`), not the advanced machine (`:12`) the code intends | `BlockAdvancedMachines.java:213-216` + missing `damageDropped` |
 | 9 | **High** | Client icon table is the **IC2 1.6.4** table; reflection target no longer exists → wrong face textures for 12/36 (side, facing) pairs — **FIXED** (§1.9) | `client/AdvancedMachinesClient.java:21-33` |
-| 10 | **Medium** | Macerator supplement state not persisted; unguarded stack math can NPE / go negative / leave 0-size phantom stacks | `TileEntityAdvancedMacerator.java:201-217` |
+| 10 | **Medium** | Macerator supplement state not persisted; unguarded stack math can NPE / go negative / leave 0-size phantom stacks — **FIXED** (§1.10) | `TileEntityAdvancedMacerator.java:201-217` |
 | 11 | **Medium** | `isItemValidForSlot` / `canExtractItem` mix up legacy `oldStartIndex` with live inventory indexes → automation can pull upgrades out of the 3rd upgrade slot | `TileEntityAdvancedMacerator.java:240-256` |
-| 12 | **Medium** | Identity recipes are pushed into the **global** `Recipes.macerator`, affecting plain IC2 Macerators, and use an uncacheable stateful `IRecipeInput` hack | `ModAdvancedMachines.java:125-131, 177-209` |
+| 12 | **Medium** | Identity recipes are pushed into the **global** `Recipes.macerator`, affecting plain IC2 Macerators, and use an uncacheable stateful `IRecipeInput` hack — **FIXED** (§1.12) | `ModAdvancedMachines.java:125-131, 177-209` |
 | 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
 | 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) — **PARTIAL** (config validation fixed in §1.14; `maxEnergy` sizing still open, see §2.6) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
 | 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
@@ -478,7 +478,7 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 | Batch | Scope | Status |
 |---|---|---|
 | 1 | Test harness (JUnit), `MachineMath` extraction, speed/math tests, config validation (§1.14) | ✅ done |
-| 2 | Macerator supplement correctness (§1.1, §1.2, §1.10, §1.12) | ⬜ pending |
+| 2 | Macerator supplement correctness (§1.1, §1.2, §1.10, §1.12) | ✅ done |
 | 3 | Speed energy gating + redstone stall removal (§1.4, §1.6) | ⬜ pending |
 | 4 | Container/block/index/drops robustness (§1.3, §1.8, §1.11, §1.13) | ⬜ pending |
 | 5 | Recycler scrap chance + polish/localization/build metadata (§1.7, §4, §7, §1.15) | ⬜ pending |
@@ -494,3 +494,24 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
   corrected values back so the config self-heals. Resolves the validation half of §1.14.
 * The new tests immediately caught two real clamp bugs in the new code (negative and
   `Integer.MAX_VALUE`-overflowing speed values), demonstrating the value of the harness.
+
+### Batch 2 details (done)
+
+* New `MaceratorSupplement` class holds the supplement decision table as a pure, null-safe function.
+  A non-matching supplement now returns `Outcome.NONE` instead of an empty non-null list, so the
+  caller can no longer mistake "nothing matched" for "replace the output with nothing". This is the
+  fix for §1.1; `getSpecialResultFor` is also called only once per result now.
+* `CommonLogicAdvancedMachines` exposes an `OutputStatus` (`NO_INPUT`, `NO_RECIPE`, `NOT_STORABLE`,
+  `STALLED`, `READY`) so the macerator can tell "no base recipe" apart from "the result does not
+  fit". `TileEntityAdvancedMacerator.getOutput()` only runs the supplement logic on a `READY` output
+  (or on a genuine `NO_RECIPE` input for the supplement-only quartz/netherrack rules), fixing the
+  §1.2 stash-check bypass.
+* The global identity recipes and the stateful `IdentRecipe` hack were removed from
+  `ModAdvancedMachines`; quartz ore and netherrack are handled entirely inside the advanced
+  macerator, so plain IC2 macerators are no longer polluted (§1.12).
+* Supplement state: `supplementedItemsLeft` is persisted to NBT, the extra input drain is applied
+  through a null/negative-safe `consumeInput()` (clearing emptied slots), and changing the supplement
+  item resets a stale charge. §1.10.
+* Tests: 16 pure decision-table tests + 10 tests that drive the real tile entity against a throw-away
+  `BasicMachineRecipeManager`, covering the output-preservation regression, the blocked-output case,
+  the four supplement rules, the netherrack drain and the NBT round trip.

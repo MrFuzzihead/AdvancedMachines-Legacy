@@ -1,9 +1,11 @@
 package atomicstryker.ic2.advancedmachines;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import net.minecraft.init.Blocks;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 import org.junit.Test;
@@ -12,16 +14,19 @@ import ic2.core.block.BlockBase;
 
 /**
  * Sanity checks that the Minecraft/IC2 classes the mod depends on are loadable from a plain JUnit
- * JVM. This is the harness check for the more game-coupled tests in later batches; if it ever breaks
- * it is an environment problem rather than a mod bug.
+ * JVM, and that the calculations do not rely on the vanilla item/block registries (which are not
+ * bootstrapped here — use bare {@link Item} instances when a distinct, unregistered stack is needed).
  */
 public class GameClassLoadingTest {
 
     @Test
-    public void itemStacksCanBeCreated() {
-        ItemStack dirt = new ItemStack(Blocks.dirt);
-        assertNotNull(dirt);
-        assertTrue(dirt.isItemEqual(new ItemStack(Blocks.dirt)));
+    public void itemStacksCanBeCreatedWithoutRegistries() {
+        Item item = new Item();
+        ItemStack stack = new ItemStack(item, 3, 1);
+        assertNotNull(stack);
+        assertEquals(3, stack.stackSize);
+        assertTrue(stack.isItemEqual(new ItemStack(item, 1, 1)));
+        assertFalse(stack.isItemEqual(new ItemStack(new Item())));
     }
 
     @Test

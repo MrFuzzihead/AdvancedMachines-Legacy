@@ -4,12 +4,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
-import ic2.api.item.IC2Items;
 import ic2.api.recipe.RecipeOutput;
 import ic2.api.recipe.Recipes;
 import ic2.core.block.invslot.InvSlot;
@@ -22,64 +19,52 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
     public static final int SUPPLEMENT_SLOT_INDEX = 8;
     public static final int EXTRA_OUT_SLOT_INDEX = 4;
 
+    private static final String NBT_SUPPLEMENT_USES = "supplementUses";
+    private static final String FLAG_SUPPLEMENT = "advSupplement";
+    private static final String FLAG_DRAIN = "advDrain";
+    private static final String FLAG_NO_BASE_RECIPE = "advNoBaseRecipe";
+
     private final CommonLogicAdvancedMachines advLogic;
-
-    public int supplementedItemsLeft = 0;
-    private int nextSupplementResultCount;
-    private int nextSupplementResourceDrain;
-
-    private final ItemStack idCopperOreCrushed;
-    private final ItemStack idTinOreCrushed;
-    private final ItemStack idCoalDust;
-    private final ItemStack idWaterCell;
-    private final ItemStack bronzeDust;
-    private final ItemStack hydratedCoalDust;
-    private final ItemStack twoQuartz;
-
-    private final ItemStack waterBucket;
-    private final ItemStack quartzOre;
-    private final ItemStack sand;
-    private final ItemStack netherrack;
-    private final ItemStack ice;
-    private final ItemStack redstone;
-
+    private final MaceratorSupplement.References supplementRefs;
     private final InvSlot supplementSlot;
 
+    /**
+     * Remaining macerations covered by the currently charged supplement item. Persisted so a chunk
+     * reload does not hand out free supplement uses.
+     */
+    public int supplementedItemsLeft = 0;
+
+    /** Prototype of the supplement item the current charge belongs to (transient, never persisted). */
+    private ItemStack chargedSupplement;
+
     public TileEntityAdvancedMacerator() {
+        this(MaceratorSupplement.References.fromIc2());
+    }
+
+    /** Test/injection constructor. */
+    TileEntityAdvancedMacerator(MaceratorSupplement.References refs) {
         super();
+        supplementRefs = refs;
         advLogic = new CommonLogicAdvancedMachines("%5d RPM", 1);
         advLogic.getOutputSlots()
             .add(outputSlot);
         advLogic.getOutputSlots()
             .add(new InvSlotOutput(this, "outputextra1", EXTRA_OUT_SLOT_INDEX, 1));
         supplementSlot = new InvSlot(this, "supplement", SUPPLEMENT_SLOT_INDEX, InvSlot.Access.I, 1);
-
-        idCopperOreCrushed = IC2Items.getItem("crushedCopperOre");
-        idTinOreCrushed = IC2Items.getItem("crushedTinOre");
-        idCoalDust = IC2Items.getItem("coalDust");
-        idWaterCell = IC2Items.getItem("waterCell");
-        bronzeDust = IC2Items.getItem("bronzeDust");
-        hydratedCoalDust = IC2Items.getItem("hydratedCoalDust");
-        twoQuartz = new ItemStack(Items.quartz, 2);
-
-        waterBucket = new ItemStack(Items.water_bucket);
-        quartzOre = new ItemStack(Blocks.quartz_ore);
-        sand = new ItemStack(Blocks.sand);
-        netherrack = new ItemStack(Blocks.netherrack);
-        ice = new ItemStack(Blocks.ice);
-        redstone = new ItemStack(Items.redstone);
     }
 
     @Override
     public void readFromNBT(NBTTagCompound nbtt) {
         super.readFromNBT(nbtt);
         advLogic.readFromNBT(nbtt);
+        supplementedItemsLeft = Math.max(0, nbtt.getInteger(NBT_SUPPLEMENT_USES));
     }
 
     @Override
     public void writeToNBT(NBTTagCompound nbtt) {
         super.writeToNBT(nbtt);
         advLogic.writeToNBT(nbtt);
+        nbtt.setInteger(NBT_SUPPLEMENT_USES, supplementedItemsLeft);
     }
 
     @Override
@@ -113,107 +98,197 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
 
     @Override
     public RecipeOutput getOutput() {
-        RecipeOutput output = advLogic.getOutput(this);
-        if (!inputSlot.isEmpty()) {
-            if (output == null) {
-                output = new RecipeOutput(new NBTTagCompound(), new ArrayList<ItemStack>());
-            }
-            ArrayList<ItemStack> outItems = new ArrayList<ItemStack>(output.items);
-            runSupplementLogic(outItems);
+        RecipeOutput baseOutput = advLogic.getOutput(this);
+        CommonLogicAdvancedMachines.OutputStatus status = advLogic.getLastOutputStatus();
+
+        if (status == CommonLogicAdvancedMachines.OutputStatus.READY && baseOutput != null) {
+            ArrayList<ItemStack> outItems = new ArrayList<ItemStack>(baseOutput.items);
+            SupplementApplication application = runSupplementLogic(outItems);
+
             if (outItems.isEmpty()) {
-                output = null;
-            } else {
-                output = new RecipeOutput(new NBTTagCompound(), outItems);
+                // A recipe with no items, or (with the corrected rules) impossible "everything was
+                // replaced by nothing". Fall back to the untouched base output.
+                return application.applied ? null : baseOutput;
             }
+
+            NBTTagCompound metadata = copyMetadata(baseOutput.metadata);
+            if (application.applied) {
+                metadata.setBoolean(FLAG_SUPPLEMENT, true);
+                metadata.setInteger(FLAG_DRAIN, application.inputDrain);
+            }
+            return new RecipeOutput(metadata, outItems);
         }
-        return output;
+
+        if (status == CommonLogicAdvancedMachines.OutputStatus.NO_RECIPE) {
+            // No IC2 macerator recipe for this input, but a supplement may still apply (quartz ore +
+            // sand, netherrack + redstone). Handled here instead of polluting Recipes.macerator with
+            // identity recipes that would also affect plain IC2 macerators.
+            ArrayList<ItemStack> outItems = new ArrayList<ItemStack>();
+            SupplementApplication application = runSupplementLogic(outItems);
+            if (application.applied && !outItems.isEmpty() && canStash(outItems)) {
+                NBTTagCompound metadata = new NBTTagCompound();
+                metadata.setBoolean(FLAG_SUPPLEMENT, true);
+                metadata.setInteger(FLAG_DRAIN, application.inputDrain);
+                metadata.setBoolean(FLAG_NO_BASE_RECIPE, true);
+                return new RecipeOutput(metadata, outItems);
+            }
+            return null;
+        }
+
+        // null, or the redstone stall output which must pass through untouched.
+        return baseOutput;
     }
 
-    private void runSupplementLogic(List<ItemStack> items) {
-        ItemStack supplement = (supplementSlot.get() != null) ? supplementSlot.get()
-            .copy() : null;
-        if (supplement != null) {
-            ArrayList<ItemStack> additions = new ArrayList<ItemStack>();
-            if (items.isEmpty()) {
-                additions.addAll(getSpecialResultFor(inputSlot.get(), null, supplement));
-                if (!additions.isEmpty() && supplementedItemsLeft == 0) {
-                    supplementedItemsLeft = nextSupplementResultCount;
-                }
-            } else {
-                ItemStack result = null;
-                Iterator<ItemStack> iter = items.iterator();
-                while (iter.hasNext()) {
-                    result = iter.next();
-                    if (supplementedItemsLeft > 0) {
-                        additions.addAll(getSpecialResultFor(inputSlot.get(), result, supplement));
-                        iter.remove();
-                    } else if (getSpecialResultFor(inputSlot.get(), result, supplement) != null) {
-                        additions.addAll(getSpecialResultFor(inputSlot.get(), result, supplement));
-                        supplementedItemsLeft = nextSupplementResultCount;
-                        iter.remove();
+    /**
+     * Applies the supplement rules to the (mutable) result list. Returns whether a supplement effect
+     * was applied; the caller must only treat that as a match.
+     */
+    private SupplementApplication runSupplementLogic(List<ItemStack> items) {
+        ItemStack supplement = supplementSlot.get();
+        if (supplement == null) {
+            supplementedItemsLeft = 0;
+            chargedSupplement = null;
+            return SupplementApplication.NONE;
+        }
+        resetChargeIfSupplementChanged(supplement);
+
+        List<ItemStack> additions = new ArrayList<ItemStack>();
+        boolean applied = false;
+        int uses = 0;
+        int inputDrain = 0;
+
+        if (items.isEmpty()) {
+            MaceratorSupplement.Outcome outcome = MaceratorSupplement
+                .classify(supplementRefs, this::isTinSource, inputSlot.get(), null, supplement);
+            if (outcome.hasEffect()) {
+                additions.addAll(outcome.outputs);
+                applied = true;
+                uses = outcome.usesPerSupplement;
+                inputDrain = outcome.inputDrain;
+            }
+        } else {
+            Iterator<ItemStack> iterator = items.iterator();
+            while (iterator.hasNext()) {
+                ItemStack result = iterator.next();
+                MaceratorSupplement.Outcome outcome = MaceratorSupplement
+                    .classify(supplementRefs, this::isTinSource, inputSlot.get(), result, supplement);
+                if (outcome.hasEffect()) {
+                    iterator.remove();
+                    additions.addAll(outcome.outputs);
+                    applied = true;
+                    if (uses == 0) {
+                        uses = outcome.usesPerSupplement;
                     }
+                    inputDrain = Math.max(inputDrain, outcome.inputDrain);
                 }
-            }
-
-            items.addAll(additions);
-        }
-    }
-
-    private List<ItemStack> getSpecialResultFor(ItemStack original, ItemStack result, ItemStack supplement) {
-        ArrayList<ItemStack> results = new ArrayList<ItemStack>();
-
-        if (result != null && supplement != null) {
-            RecipeOutput suppOut = Recipes.macerator.getOutputFor(supplement, false);
-            if (result.isItemEqual(idCopperOreCrushed) && suppOut != null) {
-                for (ItemStack i : suppOut.items) {
-                    if (i.isItemEqual(idTinOreCrushed)) {
-                        nextSupplementResultCount = 4;
-                        results.add(new ItemStack(bronzeDust.getItem(), result.stackSize));
-                        break;
-                    }
-                }
-            } else if (original.isItemEqual(quartzOre) && supplement.isItemEqual(sand)) {
-                nextSupplementResultCount = 1;
-                results.add(twoQuartz);
-            } else if (original.isItemEqual(netherrack) && supplement.isItemEqual(redstone)) {
-                if (original.stackSize > 7) {
-                    nextSupplementResultCount = 1;
-                    results.add(new ItemStack(Items.glowstone_dust, 1));
-                    nextSupplementResourceDrain = 6; // to pull 6 additional netherrack for a total cost of 7
-                }
-            } else if (result.isItemEqual(idCoalDust) && isWater(supplement)) {
-                nextSupplementResultCount = 8;
-                results.add(hydratedCoalDust);
             }
         }
 
-        return results;
+        items.addAll(additions);
+
+        if (applied && supplementedItemsLeft == 0) {
+            supplementedItemsLeft = Math.max(1, uses);
+        }
+
+        return new SupplementApplication(applied, inputDrain);
     }
 
-    private boolean isWater(ItemStack item) {
-        return item.isItemEqual(waterBucket) || item.isItemEqual(idWaterCell) || item.isItemEqual(ice);
+    private void resetChargeIfSupplementChanged(ItemStack supplement) {
+        if (chargedSupplement != null && !sameStack(chargedSupplement, supplement)) {
+            supplementedItemsLeft = 0;
+        }
+        chargedSupplement = supplement.copy();
+        chargedSupplement.stackSize = 1;
+    }
+
+    private static boolean sameStack(ItemStack a, ItemStack b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return a.isItemEqual(b) && ItemStack.areItemStackTagsEqual(a, b);
+    }
+
+    private boolean isTinSource(ItemStack supplement) {
+        if (supplementRefs.tinCrushed == null || Recipes.macerator == null) {
+            return false;
+        }
+        RecipeOutput suppOut = Recipes.macerator.getOutputFor(supplement, false);
+        if (suppOut == null) {
+            return false;
+        }
+        for (ItemStack item : suppOut.items) {
+            if (item != null && item.isItemEqual(supplementRefs.tinCrushed)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean canStash(List<ItemStack> items) {
+        for (InvSlotOutput slot : advLogic.getOutputSlots()) {
+            if (slot.canAdd(items)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static NBTTagCompound copyMetadata(NBTTagCompound metadata) {
+        return metadata == null ? new NBTTagCompound() : (NBTTagCompound) metadata.copy();
     }
 
     @Override
     public void operateOnce(RecipeOutput output, List<ItemStack> processResult) {
-        advLogic.operateOnce(this, output, processResult);
+        NBTTagCompound metadata = output != null ? output.metadata : null;
+        boolean supplementOnly = metadata != null && metadata.getBoolean(FLAG_NO_BASE_RECIPE);
+        boolean supplementApplied = metadata != null && metadata.getBoolean(FLAG_SUPPLEMENT);
 
-        if (supplementedItemsLeft > 0) {
-            if (supplementSlot.get() == null) {
-                supplementedItemsLeft = 0;
-            } else {
-                if (supplementedItemsLeft == 1) {
-                    if (--supplementSlot.get().stackSize == 0) {
-                        supplementSlot.clear();
-                    }
-                }
-                supplementedItemsLeft--;
-            }
+        if (supplementOnly) {
+            // No IC2 recipe exists for this input, so the generic helper (which calls
+            // InvSlotProcessableGeneric.consume()) would throw; consume manually instead.
+            consumeInput(1);
+            advLogic.addToOutputs(processResult);
+        } else {
+            advLogic.operateOnce(this, output, processResult);
+        }
 
-            if (nextSupplementResourceDrain > 0) {
-                inputSlot.get().stackSize -= nextSupplementResourceDrain;
-                nextSupplementResourceDrain = 0;
+        if (supplementApplied) {
+            consumeSupplementCharge();
+            int drain = metadata != null ? metadata.getInteger(FLAG_DRAIN) : 0;
+            consumeInput(drain);
+        }
+    }
+
+    private void consumeSupplementCharge() {
+        if (supplementedItemsLeft <= 0) {
+            return;
+        }
+        ItemStack supplement = supplementSlot.get();
+        if (supplement == null) {
+            supplementedItemsLeft = 0;
+            return;
+        }
+        supplementedItemsLeft--;
+        if (supplementedItemsLeft <= 0) {
+            if (--supplement.stackSize <= 0) {
+                supplementSlot.clear();
             }
+            supplementedItemsLeft = 0;
+        }
+    }
+
+    /** Decrements the input by {@code amount}, clearing the slot when it empties. Never throws. */
+    private void consumeInput(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        ItemStack input = inputSlot.get();
+        if (input == null) {
+            return;
+        }
+        input.stackSize = Math.max(0, input.stackSize - amount);
+        if (input.stackSize <= 0) {
+            inputSlot.clear();
         }
     }
 
@@ -263,6 +338,20 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
     @Override
     public void setRawProgress(short value) {
         progress = value;
+    }
+
+    /** Whether a supplement effect was applied and how much extra input it consumed. */
+    private static final class SupplementApplication {
+
+        static final SupplementApplication NONE = new SupplementApplication(false, 0);
+
+        final boolean applied;
+        final int inputDrain;
+
+        SupplementApplication(boolean applied, int inputDrain) {
+            this.applied = applied;
+            this.inputDrain = inputDrain;
+        }
     }
 
 }

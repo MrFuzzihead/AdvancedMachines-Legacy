@@ -1,14 +1,10 @@
 package atomicstryker.ic2.advancedmachines;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.block.Block;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import net.minecraftforge.common.config.Configuration;
 
@@ -23,8 +19,6 @@ import cpw.mods.fml.common.network.IGuiHandler;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
 import ic2.api.item.IC2Items;
-import ic2.api.recipe.IRecipeInput;
-import ic2.api.recipe.Recipes;
 import ic2.core.block.machine.container.ContainerOreWashing;
 import ic2.core.block.machine.tileentity.TileEntityOreWashing;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
@@ -170,15 +164,10 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
                     Character.valueOf('A'), IC2Items.getItem("advancedMachine") });
         }
 
-        // ident recipes for my supplemented specialties
-        Recipes.macerator.addRecipe(
-            new IdentRecipe(new ItemStack(Blocks.netherrack)),
-            new NBTTagCompound(),
-            new ItemStack(Blocks.netherrack));
-        Recipes.macerator.addRecipe(
-            new IdentRecipe(new ItemStack(Blocks.quartz_ore)),
-            new NBTTagCompound(),
-            new ItemStack(Blocks.quartz_ore));
+        // The supplement-specific inputs (quartz ore, netherrack) are handled directly by
+        // TileEntityAdvancedMacerator#getOutput; registering identity recipes here used to add
+        // "X -> X" recipes to the global Recipes.macerator and therefore also affected plain IC2
+        // macerators (they would waste power outputting the input unchanged).
 
         if (config.get(Configuration.CATEGORY_GENERAL, "Singularity Compressor Enabled", true)
             .getBoolean(true)) {
@@ -221,40 +210,6 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
         }
 
         config.save();
-    }
-
-    private class IdentRecipe implements IRecipeInput {
-
-        // matches will return false ONCE to get past the input == output check Player so thoughtfully added
-        boolean registerHackActive;
-        private ArrayList<ItemStack> inputresult;
-
-        private IdentRecipe(ItemStack toProcess) {
-            inputresult = new ArrayList<ItemStack>();
-            inputresult.add(toProcess);
-            registerHackActive = true;
-        }
-
-        @Override
-        public int getAmount() {
-            return 1;
-        }
-
-        @Override
-        public List<ItemStack> getInputs() {
-            return inputresult;
-        }
-
-        @Override
-        public boolean matches(ItemStack itemStack) {
-            if (registerHackActive) {
-                registerHackActive = false;
-                return false;
-            }
-            return inputresult.get(0)
-                .isItemEqual(itemStack);
-        }
-
     }
 
     @Override

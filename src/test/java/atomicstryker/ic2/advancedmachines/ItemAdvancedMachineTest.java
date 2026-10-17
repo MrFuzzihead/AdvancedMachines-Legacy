@@ -2,6 +2,7 @@ package atomicstryker.ic2.advancedmachines;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -40,6 +41,12 @@ public class ItemAdvancedMachineTest {
             metas.add(((ItemStack) entry).getItemDamage());
         }
         return metas;
+    }
+
+    @Test
+    public void unknownMetadataStillHasAName() {
+        ItemAdvancedMachine item = new ItemAdvancedMachine(new BlockAdvancedMachines());
+        assertNotNull(item.getUnlocalizedName(new ItemStack(item, 1, 99)));
     }
 
     @Test

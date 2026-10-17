@@ -483,6 +483,8 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 | 4 | Container/block/index/drops robustness (§1.3, §1.8, §1.11, §1.13) | ✅ done |
 | 5 | Recycler scrap chance + polish/localization/build metadata (§1.7, §4, §7, §1.15) | ✅ done |
 | 6 | Interop/robustness leftovers (§2.6, §3.4, §3.6) | ✅ done |
+| 7 | Config-aware creative listing + GUI constructor cleanup (§7) | ✅ done |
+| 8 | Registration tests + in-game QA checklist | ✅ done |
 
 ### Batch 1 details (done)
 
@@ -619,3 +621,54 @@ deliberately deferred, low-impact leftovers:
 * Tests: `ItemAdvancedMachineTest` (all machines listed when enabled; disabled machines hidden).
 * Still open (visual only, covered by the in-game checklist): the custom GUIs do not reproduce IC2's
   charge/upgrade tooltips.
+
+### Batch 8 details (done)
+
+* `BlockRegistrationTest` pins the block-metadata ↔ tile-entity mapping (including the null cases) and
+  that `ItemAdvancedMachine` still has a name for unknown metadata.
+* The in-game QA checklist below was added, because the unit tests deliberately do not cover
+  rendering, GUI visuals/localisation, the wrench/drop flow through real Minecraft, redstone world
+  propagation, multiplayer sync or NEI/WAILA integration. **These still need a manual pass.**
+
+---
+
+## 11. In-game QA checklist (manual, not yet performed)
+
+Unit tests cover the calculations, tile-entity logic, block/container invariants and registration
+wiring. The following must be verified in a real client (and a dedicated server for the multiplayer
+items):
+
+**Loading / registration**
+- [ ] Client launches with no mixin/registration errors; NEI lists the five machines.
+- [ ] Dedicated server starts, loads a world and runs the machines; no client-only class is touched.
+- [ ] WAILA/NEI show "Rotary Macerator", "Singularity Compressor", "Centrifuge Extractor",
+      "Combined Recycler", "Rotary Ore Washer" (the ore washer's name is untested in unit tests).
+
+**Rendering / GUI**
+- [ ] All five blocks and their item forms render with the intended textures.
+- [ ] The front/ON texture faces the player; placing and wrenching updates the facing.
+- [ ] The active (ON) textures switch on and off with the machine.
+- [ ] Each GUI opens on right-click and shows localised labels (`Speed:` / `Pressure:` /
+      `Mass rate:` / `Inventory`) in en_US, de_DE and ru_RU.
+- [ ] Rotary Ore Washer: the fluid gauge animates, the tooltip shows the translated fluid name, and
+      the speed readout is visible.
+
+**Behaviour**
+- [ ] Machines ramp to 10× over ~10000 ticks and decay while idle.
+- [ ] An under-powered machine does not advance extra progress for free.
+- [ ] A redstone signal idles a machine (no progress, no EU drain).
+- [ ] Rotary Macerator supplements: copper + tin ore → bronze dust (4 uses); quartz ore + sand →
+      2 quartz (1 use); netherrack + redstone → glowstone (needs a stack of 8+, consumes 7, 1 use);
+      coal + water/water cell/ice → hydrated coal dust (8 uses).
+- [ ] A non-matching supplement does **not** destroy the normal maceration output.
+- [ ] A full output does not consume the Macerator's input.
+- [ ] The Combined Recycler yields scrap about 1 in 8 operations, not every operation.
+
+**Items / automation / interaction**
+- [ ] Wrenching recovers the machine at the 85% rate; mining yields the IC2 advanced machine casing;
+      both drop the machine's contents.
+- [ ] Hoppers/pipes can extract from the output slots/extra output slots.
+- [ ] Hoppers/pipes cannot insert or extract the supplement slot or the upgrade slots.
+- [ ] Breaking a machine with its GUI open closes the client container.
+- [ ] Config-disabled machines are absent from the creative tab and have no crafting recipe.
+- [ ] Multiplayer: the GUI progress/speed sync and the machine state stay correct for two players.

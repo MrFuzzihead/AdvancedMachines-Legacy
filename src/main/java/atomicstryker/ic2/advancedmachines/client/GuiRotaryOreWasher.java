@@ -9,6 +9,7 @@ import net.minecraftforge.fluids.FluidStack;
 
 import org.lwjgl.opengl.GL11;
 
+import atomicstryker.ic2.advancedmachines.IAdvancedMachine;
 import ic2.core.block.machine.container.ContainerOreWashing;
 import ic2.core.block.machine.tileentity.TileEntityOreWashing;
 import ic2.core.util.DrawUtil;
@@ -31,11 +32,17 @@ public class GuiRotaryOreWasher extends GuiContainer {
     protected void drawGuiContainerForegroundLayer(int par1, int par2) {
         this.fontRendererObj
             .drawString(StatCollector.translateToLocal("item.advancedmachines:rotaryOreWasher.name"), 8, 6, 4210752);
+        this.fontRendererObj
+            .drawString(StatCollector.translateToLocal("container.inventory"), 8, this.ySize - 96 + 2, 4210752);
+        this.fontRendererObj.drawString(StatCollector.translateToLocal("advancedmachines.gui.speed"), 4, 36, 4210752);
+        this.fontRendererObj.drawString(((IAdvancedMachine) this.container.base).printFormattedData(), 10, 44, 4210752);
 
         FluidStack fluidstack = ((TileEntityOreWashing) this.container.base).getFluidStackfromTank();
-        if (fluidstack != null) {
-            String tooltip = fluidstack.getFluid()
-                .getName() + ": "
+        if (fluidstack != null && fluidstack.getFluid() != null) {
+            String fluidName = StatCollector.translateToLocal(
+                "ic2." + fluidstack.getFluid()
+                    .getName());
+            String tooltip = fluidName + ": "
                 + fluidstack.amount
                 + StatCollector.translateToLocal("ic2.generic.text.mb");
             GuiTooltipHelper.drawAreaTooltip(par1 - this.guiLeft, par2 - this.guiTop, tooltip, 63, 23, 76, 71);
@@ -61,7 +68,11 @@ public class GuiRotaryOreWasher extends GuiContainer {
         }
         TileEntityOreWashing te = (TileEntityOreWashing) this.container.base;
 
-        if (te.getTankAmount() > 0) {
+        if (te.getTankAmount() > 0 && te.getFluidTank()
+            .getFluid() != null
+            && te.getFluidTank()
+                .getFluid()
+                .getFluid() != null) {
             IIcon fluidIcon = te.getFluidTank()
                 .getFluid()
                 .getFluid()

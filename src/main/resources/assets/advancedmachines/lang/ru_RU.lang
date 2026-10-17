@@ -3,3 +3,6 @@ item.advancedmachines:singularityCompressor.name=Сингулярный комп
 item.advancedmachines:centrifugeExtractor.name=Центробежный экстрактор
 item.advancedmachines:combinedRecycler.name=Комбинированный утилизатор
 item.advancedmachines:rotaryOreWasher.name=Роторный рудопромывочный механизм
+advancedmachines.gui.speed=Скорость:
+advancedmachines.gui.pressure=Давление:
+advancedmachines.gui.massRate=Массовый расход:

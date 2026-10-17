@@ -15,7 +15,6 @@ import ic2.core.block.machine.tileentity.TileEntityMacerator;
 
 public class TileEntityAdvancedMacerator extends TileEntityMacerator implements IAdvancedMachine, IProgressAccess {
 
-    public static final int MAIN_IN_SLOT_INDEX = 0;
     public static final int SUPPLEMENT_SLOT_INDEX = 8;
     public static final int EXTRA_OUT_SLOT_INDEX = 4;
 

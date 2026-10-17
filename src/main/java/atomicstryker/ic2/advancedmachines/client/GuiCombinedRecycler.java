@@ -28,8 +28,10 @@ public class GuiCombinedRecycler extends GuiContainer {
     protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
         this.fontRendererObj
             .drawString(StatCollector.translateToLocal("item.advancedmachines:combinedRecycler.name"), 8, 6, 4210752);
-        this.fontRendererObj.drawString("Inventory", 8, this.ySize - 96 + 2, 4210752);
-        this.fontRendererObj.drawString("Mass rate:", 8, 36, 4210752);
+        this.fontRendererObj
+            .drawString(StatCollector.translateToLocal("container.inventory"), 8, this.ySize - 96 + 2, 4210752);
+        this.fontRendererObj
+            .drawString(StatCollector.translateToLocal("advancedmachines.gui.massRate"), 8, 36, 4210752);
         this.fontRendererObj.drawString(((IAdvancedMachine) container.base).printFormattedData(), 10, 44, 4210752);
     }
 

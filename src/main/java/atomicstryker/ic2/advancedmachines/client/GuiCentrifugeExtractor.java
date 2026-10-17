@@ -30,8 +30,9 @@ public class GuiCentrifugeExtractor extends GuiContainer {
             8,
             6,
             4210752);
-        this.fontRendererObj.drawString("Inventory", 8, ySize - 96 + 2, 4210752);
-        this.fontRendererObj.drawString("Speed:", 4, 36, 4210752);
+        this.fontRendererObj
+            .drawString(StatCollector.translateToLocal("container.inventory"), 8, ySize - 96 + 2, 4210752);
+        this.fontRendererObj.drawString(StatCollector.translateToLocal("advancedmachines.gui.speed"), 4, 36, 4210752);
         this.fontRendererObj.drawString(((IAdvancedMachine) container.base).printFormattedData(), 10, 44, 4210752);
     }
 

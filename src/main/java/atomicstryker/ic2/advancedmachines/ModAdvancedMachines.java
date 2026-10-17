@@ -26,8 +26,8 @@ import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 @Mod(
     modid = "AdvancedMachines",
     name = "IC2 Advanced Machines Addon",
-    version = "1.1.6",
-    dependencies = "required-after:IC2@2.2.775")
+    version = Tags.VERSION,
+    dependencies = "required-after:IC2@2.2.828")
 public class ModAdvancedMachines implements IGuiHandler, IProxy {
 
     @SidedProxy(

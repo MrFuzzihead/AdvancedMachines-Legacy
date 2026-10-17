@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Random;
+
 import org.junit.Test;
 
 /**
@@ -99,6 +101,28 @@ public class MachineMathTest {
         assertEquals(2, MachineMath.scaledEnergyConsume(2, -1.0d));
         assertEquals(2, MachineMath.scaledEnergyConsume(2, Double.NaN));
         assertEquals(2, MachineMath.scaledEnergyConsume(2, Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    public void scrapRollHappensOneInEight() {
+        Random random = new Random(1234567L);
+        int rolls = 80000;
+        int hits = 0;
+        for (int i = 0; i < rolls; i++) {
+            if (MachineMath.rollScrap(random, 8)) {
+                hits++;
+            }
+        }
+        // p = 1/8 -> expect 10000 hits; allow ~3 standard deviations of slack
+        assertTrue("hits=" + hits, hits > 9000 && hits < 11000);
+    }
+
+    @Test
+    public void scrapRollAlwaysHappensForNonPositiveChance() {
+        Random random = new Random(1L);
+        assertTrue(MachineMath.rollScrap(random, 1));
+        assertTrue(MachineMath.rollScrap(random, 0));
+        assertTrue(MachineMath.rollScrap(random, -5));
     }
 
     @Test

@@ -1,5 +1,7 @@
 package atomicstryker.ic2.advancedmachines;
 
+import java.util.Random;
+
 /**
  * Pure, side-effect-free calculations shared by the advanced machines.
  * <p>
@@ -85,5 +87,13 @@ public final class MachineMath {
         }
         long scaled = Math.round(baseEnergyConsume * powerDrawFactor);
         return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, scaled));
+    }
+
+    /**
+     * One-in-{@code chance} roll, mirroring IC2's recycler scrap chance. A non-positive chance is
+     * treated as "always" so it can never throw from {@link Random#nextInt(int)}.
+     */
+    public static boolean rollScrap(Random random, int chance) {
+        return chance <= 0 || random.nextInt(chance) == 0;
     }
 }

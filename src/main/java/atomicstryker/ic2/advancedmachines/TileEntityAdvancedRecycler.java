@@ -7,6 +7,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
 import ic2.api.recipe.RecipeOutput;
+import ic2.core.IC2;
 import ic2.core.block.invslot.InvSlotOutput;
 import ic2.core.block.machine.tileentity.TileEntityRecycler;
 
@@ -56,7 +57,15 @@ public class TileEntityAdvancedRecycler extends TileEntityRecycler implements IA
 
     @Override
     public void operateOnce(RecipeOutput output, List<ItemStack> processResult) {
-        advLogic.operateOnce(this, output, processResult);
+        if (inputSlot.isEmpty()) {
+            return;
+        }
+        // Reproduce the base recycler's scrap chance; the old delegation to advLogic.operateOnce
+        // always inserted the result, i.e. 8x the intended scrap yield.
+        inputSlot.consume();
+        if (MachineMath.rollScrap(IC2.random, TileEntityRecycler.recycleChance())) {
+            advLogic.addToOutputs(processResult);
+        }
     }
 
     @Override

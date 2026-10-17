@@ -3,6 +3,7 @@ package atomicstryker.ic2.advancedmachines;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -135,5 +136,8 @@ public class CommonLogicAdvancedMachinesTest {
         newLogic().setOverclockRates(te);
 
         assertEquals((int) Math.round(base * SETTINGS.powerDrawFactor), te.energyConsume);
+        assertTrue(
+            "buffer must cover a whole boosted operation",
+            te.maxEnergy >= (long) te.operationLength * te.energyConsume);
     }
 }

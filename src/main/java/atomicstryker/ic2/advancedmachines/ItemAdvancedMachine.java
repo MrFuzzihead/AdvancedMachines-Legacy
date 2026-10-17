@@ -15,7 +15,7 @@ public class ItemAdvancedMachine extends ItemBlock {
         super(b);
         setMaxDamage(0);
         setHasSubtypes(true);
-        setCreativeTab(CreativeTabs.tabBlock);
+        setCreativeTab(CreativeTabs.tabRedstone);
     }
 
     @Override
@@ -43,17 +43,16 @@ public class ItemAdvancedMachine extends ItemBlock {
             case 4:
                 return "item.advancedmachines:rotaryOreWasher";
             default:
-                return null;
+                // Unknown metadata (corrupt NBT, third-party item) must still have a display name.
+                return super.getUnlocalizedName(var1);
         }
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public void getSubItems(Item par1, CreativeTabs par2CreativeTabs, List par3List) {
-        par3List.add(new ItemStack(par1, 1, 0));
-        par3List.add(new ItemStack(par1, 1, 1));
-        par3List.add(new ItemStack(par1, 1, 2));
-        par3List.add(new ItemStack(par1, 1, 3));
-        par3List.add(new ItemStack(par1, 1, 4));
+        for (int meta = 0; meta < BlockAdvancedMachines.MACHINE_COUNT; meta++) {
+            par3List.add(new ItemStack(par1, 1, meta));
+        }
     }
 }

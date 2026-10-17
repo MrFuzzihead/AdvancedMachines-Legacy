@@ -74,9 +74,7 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     }
 
     public void readFromNBT(NBTTagCompound nbtt) {
-        try {
-            speed = nbtt.getInteger("speed");
-        } catch (Exception e) {}
+        speed = nbtt.getInteger("speed");
     }
 
     public void writeToNBT(NBTTagCompound nbtt) {
@@ -193,6 +191,15 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
 
     public void setOverclockRates(TileEntityStandardMachine te) {
         te.energyConsume = MachineMath.scaledEnergyConsume(te.energyConsume, settings.powerDrawFactor);
+
+        // super.setOverclockRates() sized the internal buffer for the un-multiplied draw; grow it to
+        // cover at least one boosted operation so the machine can actually use its extra speed.
+        if (te.operationLength > 0) {
+            long requiredStorage = (long) te.operationLength * te.energyConsume;
+            if (requiredStorage > te.maxEnergy) {
+                te.maxEnergy = (int) Math.min(Integer.MAX_VALUE, requiredStorage);
+            }
+        }
 
         int overclockers = 0;
         for (int i = 0; i < te.upgradeSlot.size(); i++) {

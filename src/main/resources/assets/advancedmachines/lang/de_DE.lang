@@ -3,3 +3,6 @@ item.advancedmachines:singularityCompressor.name=Singularitaets-Kompressor
 item.advancedmachines:centrifugeExtractor.name=Zentrifugaler Extraktor
 item.advancedmachines:combinedRecycler.name=Kombinierter Recycler
 item.advancedmachines:rotaryOreWasher.name=Rotierender Erzwäscher
+advancedmachines.gui.speed=Geschwindigkeit:
+advancedmachines.gui.pressure=Druck:
+advancedmachines.gui.massRate=Massenrate:

@@ -42,7 +42,7 @@ public class BlockAdvancedMachines extends BlockContainer {
     public BlockAdvancedMachines() {
         super(Material.iron);
         this.setHardness(2.0F);
-        this.setStepSound(soundTypeAnvil);
+        this.setStepSound(soundTypeMetal);
     }
 
     @Override

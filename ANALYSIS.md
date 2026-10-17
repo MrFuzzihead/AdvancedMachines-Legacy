@@ -16,15 +16,15 @@
 | 4 | **High** | Speed hack **adds progress for free when the machine has no energy** → up to 10× speed while many progress ticks cost no EU — **FIXED** (§1.4) | `CommonLogicAdvancedMachines.java:129-152` |
 | 5 | **High** | Progress is manipulated via **reflection**; failure silently disables speed and also disables the only guard on the dummy-redstone path — **FIXED** (§1.5) | `CommonLogicAdvancedMachines.java:29-56, 129-159` |
 | 6 | **High** | Redstone "stall" injects a fake **dirt** `RecipeOutput`; can crash (`consume without a processing result`) or emit dirt in edge cases — **FIXED** (§1.6) | `CommonLogicAdvancedMachines.java:26, 75-115, 117-127` |
-| 7 | **High** | Combined Recycler bypasses the base recycler's **1-in-8 scrap chance** → 8× scrap yield | `TileEntityAdvancedRecycler.java:57-60` vs IC2 `TileEntityRecycler.operateOnce` |
+| 7 | **High** | Combined Recycler bypasses the base recycler's **1-in-8 scrap chance** → 8× scrap yield — **FIXED** (§1.7) | `TileEntityAdvancedRecycler.java:57-60` vs IC2 `TileEntityRecycler.operateOnce` |
 | 8 | **High** | Mining drops the **IC2 basic machine block** (`blockMachine:0`), not the advanced machine (`:12`) the code intends — **FIXED** (§1.8) | `BlockAdvancedMachines.java:213-216` + missing `damageDropped` |
 | 9 | **High** | Client icon table is the **IC2 1.6.4** table; reflection target no longer exists → wrong face textures for 12/36 (side, facing) pairs — **FIXED** (§1.9) | `client/AdvancedMachinesClient.java:21-33` |
 | 10 | **Medium** | Macerator supplement state not persisted; unguarded stack math can NPE / go negative / leave 0-size phantom stacks — **FIXED** (§1.10) | `TileEntityAdvancedMacerator.java:201-217` |
 | 11 | **Medium** | `isItemValidForSlot` / `canExtractItem` mix up legacy `oldStartIndex` with live inventory indexes → automation can pull upgrades out of the 3rd upgrade slot — **FIXED** (§1.11) | `TileEntityAdvancedMacerator.java:240-256` |
 | 12 | **Medium** | Identity recipes are pushed into the **global** `Recipes.macerator`, affecting plain IC2 Macerators, and use an uncacheable stateful `IRecipeInput` hack — **FIXED** (§1.12) | `ModAdvancedMachines.java:125-131, 177-209` |
 | 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop — **FIXED** (§1.13; GUI-close-on-break still open) | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
-| 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) — **PARTIAL** (config validation fixed in §1.14; `maxEnergy` sizing still open, see §2.6) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
-| 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
+| 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) — **FIXED** (§1.14; validation + boosted `maxEnergy` sizing) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
+| 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers — **MOSTLY FIXED** (§1.15/§4; GUI charge tooltips + creative filtering still open) | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
 
 > **Reflection cleanup applied:** items **#5** and **#9** are resolved — both reflective accesses were removed without mixins. Notably, this was possible because neither access was actually blocked (`progress` is `protected`, and the 1.7.10 sprite mapping is exposed by IC2 as the public static `BlockBase.getTextureSubIndex(int, int)`). See the *Resolved* notes in §1.5 and §1.9. The speed formula's divide-by-zero crash path is guarded as part of the same change (§1.5 / §14).
 
@@ -481,7 +481,7 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 | 2 | Macerator supplement correctness (§1.1, §1.2, §1.10, §1.12) | ✅ done |
 | 3 | Speed energy gating + redstone stall removal (§1.4, §1.6) | ✅ done |
 | 4 | Container/block/index/drops robustness (§1.3, §1.8, §1.11, §1.13) | ✅ done |
-| 5 | Recycler scrap chance + polish/localization/build metadata (§1.7, §4, §7, §1.15) | ⬜ pending |
+| 5 | Recycler scrap chance + polish/localization/build metadata (§1.7, §4, §7, §1.15) | ✅ done |
 
 ### Batch 1 details (done)
 
@@ -553,3 +553,25 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
 * Tests: 5 new block tests (drop damage, meta bounds, spawn guard) plus 2 automation tests for the
   supplement/extra-output slot access rights.
 * Ran `spotlessApply` over the tree.
+
+### Batch 5 details (done)
+
+* §1.7: `TileEntityAdvancedRecycler.operateOnce` now consumes the input and only inserts scrap on
+  IC2's 1-in-8 roll (`MachineMath.rollScrap(IC2.random, recycleChance())`), instead of always
+  inserting via the shared helper. Covered by a statistical test.
+* §1.14/§2.6: after applying the power-draw factor, `setOverclockRates` grows `maxEnergy` so the
+  buffer covers at least one boosted operation (the base sized it for the un-multiplied draw).
+* §1.15/§4 polish:
+  * `@Mod` now uses the generated `Tags.VERSION` and requires `IC2@2.2.828` (was hardcoded `1.1.6` /
+    `2.2.775`).
+  * `mcmod.info` no longer advertises the unused `UniMixins` dependency.
+  * GUI labels are localised (`container.inventory` + new `advancedmachines.gui.*` keys in en_US,
+    de_DE and ru_RU), the Rotary Ore Washer GUI gained the missing speed readout, and its fluid
+    tooltip is translated and null-safe.
+  * README documented (machines, supplement table, config, build/test commands).
+* §7 leftovers fixed: removed the unused `MAIN_IN_SLOT_INDEX`, `ItemAdvancedMachine` no longer
+  returns a null name for unknown metadata and uses the same creative tab as the block, the block's
+  step sound matches IC2 metal machines, and the pointless try/catch in `readFromNBT` is gone.
+* Still open (low priority): `ItemAdvancedMachine.getSubItems` does not filter config-disabled
+  machines; the GUI constructors take an unused tile-entity parameter; the custom GUIs do not show
+  IC2's charge/upgrade tooltips.

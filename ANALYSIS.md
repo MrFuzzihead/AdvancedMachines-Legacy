@@ -24,7 +24,7 @@
 | 12 | **Medium** | Identity recipes are pushed into the **global** `Recipes.macerator`, affecting plain IC2 Macerators, and use an uncacheable stateful `IRecipeInput` hack — **FIXED** (§1.12) | `ModAdvancedMachines.java:125-131, 177-209` |
 | 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop — **FIXED** (§1.13 / §3.4, incl. GUI close on break) | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
 | 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) — **FIXED** (§1.14; validation + boosted `maxEnergy` sizing) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
-| 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers — **MOSTLY FIXED** (§1.15/§4; GUI charge tooltips + creative filtering still open) | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
+| 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers — **MOSTLY FIXED** (§1.15/§4; GUI upgrade-info button still open, see §10) | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
 
 > **Reflection cleanup applied:** items **#5** and **#9** are resolved — both reflective accesses were removed without mixins. Notably, this was possible because neither access was actually blocked (`progress` is `protected`, and the 1.7.10 sprite mapping is exposed by IC2 as the public static `BlockBase.getTextureSubIndex(int, int)`). See the *Resolved* notes in §1.5 and §1.9. The speed formula's divide-by-zero crash path is guarded as part of the same change (§1.5 / §14).
 
@@ -365,7 +365,7 @@ Washer-specific notes:
 5. **The washer GUI has no speed readout** (`GuiRotaryOreWasher` draws only the title and the fluid tooltip), inconsistent with the other four.
 6. **`GuiRotaryOreWasher` fluid tooltip** uses `fluidstack.getFluid().getName()` (internal name, untranslated) and dereferences `getFluid().getFluid().getIcon()`; if the `Fluid` object is missing (unregistered/removed fluid) these NPE. IC2's own GUI guards and uses `"ic2." + fluidName` for translation.
 7. **`ModAdvancedMachines.getServerGuiElement`** casts `world.getTileEntity(...)` to `TileEntityStandardMachine` without an `instanceof` check — a stale GUI packet after the block was replaced, or another mod's block, throws `ClassCastException`. Cheap to harden.
-8. **GUIs extend `GuiContainer` directly**, so they lose IC2's `GuiMachine` niceties (charge/tier tooltips, side info, `drawTooltip` helpers for upgrades). The custom textures make this acceptable, but the charge tooltip in particular is a usability regression.
+8. **GUIs extend `GuiContainer` directly**, so they lose `GuiIC2`'s compatible-upgrade info button/tooltip (the only tooltip the 2.2.828 base machine GUI draws; there is no charge tooltip). The custom textures make this a cosmetic gap, but the info button would need a layout pass because it sits at (3,3), under the mod's left-aligned title.
 9. **Extra output slot coordinates** are (115, 17)/(115, 53) while the base machine's output is at (116, 35) — 1 px offset that only matters for the mod's own textures (they are drawn for it). Cosmetic.
 
 ---
@@ -579,23 +579,28 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
   machines; the GUI constructors take an unused tile-entity parameter; the custom GUIs do not show
   IC2's charge/upgrade tooltips.
 
-### Remaining low-priority items (not yet done)
+### Remaining implementation items (after batches 6–8)
 
-Everything in the executive summary's Critical/High/Medium list is now addressed. These are the
-deliberately deferred, low-impact leftovers:
+Everything in the executive summary's Critical/High/Medium list is addressed. What is left is
+cosmetic or design-choice work:
 
-* §1.13/§3.4: the block does not close open GUIs when broken (IC2's `onBlockPreDestroy` does). Stale
-  client containers are harmless today but would be nice to close.
-* §3.6: `onNeighborBlockChange` is not forwarded to `TileEntityBlock.onNeighborUpdate`; inert for
-  these machines because they register no IC2 components.
-* §2.6: `getInventoryName()`/`getGui()` still inherit the base machine names/screens, so WAILA/NEI
-  show "Macerator" etc. and any direct `IHasGui` use would open the base GUI.
-* §2.6: the >6-overclocker guard is still an explosion; an insert-time cap (rejecting the upgrade or
-  limiting the slot stack size) would be more robust.
-* §7: `ItemAdvancedMachine.getSubItems` does not filter config-disabled machines; the GUI constructors
-  keep an unused tile-entity parameter; the custom GUIs omit IC2's charge/upgrade tooltips.
-* §5: performance polish — cache the supplement recipe lookups per input, and avoid the double tile
-  entity lookup in `BlockAdvancedMachines.getIcon`.
+* **GUI parity (cosmetic).** The custom GUIs do not reproduce IC2's compatible-upgrade info button /
+  tooltip (`GuiTooltipHelper.drawUpgradeslotTooltip`, the `infobutton.png` at 3,3 in the top-left).
+  In 2.2.828 that is the *only* tooltip the base machine GUI draws — there is no charge tooltip —
+  and adding the button blind would overlap the mod's left-aligned title on its custom textures, so
+  it needs an in-game layout pass first. `getGui()` still returns the base IC2 screens for any mod
+  that bypasses the mod's own `IGuiHandler`.
+* **Hard overclocker cap.** The >6-overclocker punishment is now bounded (fires once, server-side) but
+  is still an explosion. A proper fix is to reject/cap overclockers at insert time, which needs a
+  custom `InvSlotUpgrade` (IC2 owns the `upgradeSlot` instance, so this is a larger refactor).
+* **Performance polish.** Supplement recipe lookups are no longer per-item (Batch 2 reduced them to
+  the copper branch only), but they are still repeated each tick while a copper result is present and
+  could be memoised per (supplement, input). `getIcon` now does a single tile-entity lookup.
+* **Server smoke test** (done): a headless `./gradlew runServer` reached `Done (0.988s)!`, loaded
+  `AdvancedMachines`/`IC2`/NEI/CodeChickenCore and shut down cleanly, with no `atomicstryker` stack
+  frames. The only log errors are pre-existing dev-environment artifacts (FML signature/binary-patch
+  warnings, a modern `antlr4` build-tool jar on the run classpath, and IC2's deobf signature warning).
+  This validates load/registration only; in-world machine behaviour still needs the §11 pass.
 
 ### Batch 6 details (done)
 

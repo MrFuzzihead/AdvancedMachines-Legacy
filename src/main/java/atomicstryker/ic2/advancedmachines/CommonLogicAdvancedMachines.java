@@ -117,11 +117,7 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
         }
         IProgressAccess progress = (IProgressAccess) te;
 
-        if (te.getActive()) {
-            speed = Math.min(mod.maxMachineSpeedUpTicks, speed + 1);
-        } else {
-            speed = Math.max(0, speed - 1);
-        }
+        speed = MachineMath.rampSpeed(speed, mod.maxMachineSpeedUpTicks, te.getActive());
 
         if (runningEmpty) {
             progress.setRawProgress((short) 0);
@@ -131,23 +127,13 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
         // progress typically goes from 0(start) to 400,500(operation end) and gets incremented by 1
         // every tick. Additionally, setOverClockRates may mess with it and further increment it. The
         // goal here is to increase the base processing speed to up to N*100% by calculating the speed.
-        //
-        // This yields 0-n extra progress ticks. Guard the divisions instead of letting them throw and
-        // silently disabling the speed logic as the old reflective implementation did.
-        int speedUpFactor = mod.maxMachineSpeedUpFactor - 1;
-        if (speedUpFactor <= 0 || mod.maxMachineSpeedUpTicks <= 0) {
-            return;
-        }
-        int ticksPerExtraProgress = mod.maxMachineSpeedUpTicks / speedUpFactor;
-        if (ticksPerExtraProgress <= 0) {
-            return;
-        }
-        short extraProgress = (short) (speed / ticksPerExtraProgress);
+        short extraProgress = MachineMath
+            .extraProgressTicks(speed, mod.maxMachineSpeedUpTicks, mod.maxMachineSpeedUpFactor);
         progress.setRawProgress((short) (progress.getRawProgress() + extraProgress));
     }
 
     public void setOverclockRates(TileEntityStandardMachine te) {
-        te.energyConsume *= mod.machinePowerDrawFactor;
+        te.energyConsume = MachineMath.scaledEnergyConsume(te.energyConsume, mod.machinePowerDrawFactor);
 
         int overclockers = 0;
         for (int i = 0; i < te.upgradeSlot.size(); i++) {

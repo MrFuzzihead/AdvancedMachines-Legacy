@@ -57,6 +57,14 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
     public int maxMachineSpeedUpTicks;
     public double machinePowerDrawFactor;
 
+    public static final int DEFAULT_MAX_SPEED_UP_FACTOR = 10;
+    public static final int DEFAULT_MAX_SPEED_UP_TICKS = 10000;
+    public static final double DEFAULT_MACHINE_POWER_DRAW_FACTOR = 3.0d;
+
+    private static final String KEY_MAX_SPEED_UP_FACTOR = "maxMachineSpeedUpFactor";
+    private static final String KEY_MAX_SPEED_UP_TICKS = "maxMachineSpeedUpTicks";
+    private static final String KEY_MACHINE_POWER_DRAW_FACTOR = "machinePowerDrawFactor";
+
     @EventHandler
     public void preInit(FMLPreInitializationEvent evt) {
         config = new Configuration(evt.getSuggestedConfigurationFile());
@@ -76,24 +84,65 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
         maxMachineSpeedUpFactor = config
             .get(
                 Configuration.CATEGORY_GENERAL,
-                "maxMachineSpeedUpFactor",
-                10,
+                KEY_MAX_SPEED_UP_FACTOR,
+                DEFAULT_MAX_SPEED_UP_FACTOR,
                 "Advanced Machines will reach X times the speed of normal machines")
-            .getInt(10);
+            .getInt(DEFAULT_MAX_SPEED_UP_FACTOR);
         maxMachineSpeedUpTicks = config
             .get(
                 Configuration.CATEGORY_GENERAL,
-                "maxMachineSpeedUpTicks",
-                10000,
+                KEY_MAX_SPEED_UP_TICKS,
+                DEFAULT_MAX_SPEED_UP_TICKS,
                 "Advanced Machines will take X ingame ticks to reach max speed")
-            .getInt(10000);
+            .getInt(DEFAULT_MAX_SPEED_UP_TICKS);
         machinePowerDrawFactor = config
             .get(
                 Configuration.CATEGORY_GENERAL,
-                "machinePowerDrawFactor",
-                3.0d,
+                KEY_MACHINE_POWER_DRAW_FACTOR,
+                DEFAULT_MACHINE_POWER_DRAW_FACTOR,
                 "Advanced Machines will draw X times the normal machines power")
-            .getDouble(3.0d);
+            .getDouble(DEFAULT_MACHINE_POWER_DRAW_FACTOR);
+
+        validateConfig();
+    }
+
+    /**
+     * Repairs out-of-range config values instead of letting them break the speed formula (division by
+     * zero) or energy accounting (zero/negative power draw). Invalid entries are rewritten to the
+     * defaults so the file self-heals.
+     */
+    private void validateConfig() {
+        if (!MachineMath.isValidSpeedConfig(maxMachineSpeedUpFactor, maxMachineSpeedUpTicks)) {
+            System.out.println(
+                "[AdvancedMachines] Invalid speed config (maxMachineSpeedUpFactor=" + maxMachineSpeedUpFactor
+                    + ", maxMachineSpeedUpTicks="
+                    + maxMachineSpeedUpTicks
+                    + "); falling back to "
+                    + DEFAULT_MAX_SPEED_UP_FACTOR
+                    + "x over "
+                    + DEFAULT_MAX_SPEED_UP_TICKS
+                    + " ticks.");
+            maxMachineSpeedUpFactor = DEFAULT_MAX_SPEED_UP_FACTOR;
+            maxMachineSpeedUpTicks = DEFAULT_MAX_SPEED_UP_TICKS;
+            config.get(Configuration.CATEGORY_GENERAL, KEY_MAX_SPEED_UP_FACTOR, DEFAULT_MAX_SPEED_UP_FACTOR)
+                .set(DEFAULT_MAX_SPEED_UP_FACTOR);
+            config.get(Configuration.CATEGORY_GENERAL, KEY_MAX_SPEED_UP_TICKS, DEFAULT_MAX_SPEED_UP_TICKS)
+                .set(DEFAULT_MAX_SPEED_UP_TICKS);
+        }
+        if (!MachineMath.isValidPowerDrawFactor(machinePowerDrawFactor)) {
+            System.out.println(
+                "[AdvancedMachines] Invalid machinePowerDrawFactor (" + machinePowerDrawFactor
+                    + "); falling back to "
+                    + DEFAULT_MACHINE_POWER_DRAW_FACTOR
+                    + ".");
+            machinePowerDrawFactor = DEFAULT_MACHINE_POWER_DRAW_FACTOR;
+            config
+                .get(
+                    Configuration.CATEGORY_GENERAL,
+                    KEY_MACHINE_POWER_DRAW_FACTOR,
+                    DEFAULT_MACHINE_POWER_DRAW_FACTOR)
+                .set(DEFAULT_MACHINE_POWER_DRAW_FACTOR);
+        }
     }
 
     @EventHandler

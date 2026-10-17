@@ -36,4 +36,6 @@
 dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.162-GTNH:dev")
 	api("net.industrial-craft:industrialcraft-2:2.2.828-experimental:dev")
+
+    testImplementation("junit:junit:4.13.2")
 }

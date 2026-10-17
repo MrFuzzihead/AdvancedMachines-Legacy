@@ -23,7 +23,7 @@
 | 11 | **Medium** | `isItemValidForSlot` / `canExtractItem` mix up legacy `oldStartIndex` with live inventory indexes → automation can pull upgrades out of the 3rd upgrade slot | `TileEntityAdvancedMacerator.java:240-256` |
 | 12 | **Medium** | Identity recipes are pushed into the **global** `Recipes.macerator`, affecting plain IC2 Macerators, and use an uncacheable stateful `IRecipeInput` hack | `ModAdvancedMachines.java:125-131, 177-209` |
 | 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
-| 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
+| 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) — **PARTIAL** (config validation fixed in §1.14; `maxEnergy` sizing still open, see §2.6) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
 | 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
 
 > **Reflection cleanup applied:** items **#5** and **#9** are resolved — both reflective accesses were removed without mixins. Notably, this was possible because neither access was actually blocked (`progress` is `protected`, and the 1.7.10 sprite mapping is exposed by IC2 as the public static `BlockBase.getTextureSubIndex(int, int)`). See the *Resolved* notes in §1.5 and §1.9. The speed formula's divide-by-zero crash path is guarded as part of the same change (§1.5 / §14).
@@ -468,3 +468,29 @@ Washer-specific notes:
 * The current working tree was diffed (whitespace/format-insensitive) against the upstream original `AdvancedMachinesAS` sources at `Jorch72/atomicstrykers-minecraft-mods`; only formatting/reshuffled imports differ, so all findings are pre-existing mod bugs.
 * Container slot numbering was derived from `ContainerFullInv` (36 player slots first) + `ContainerElectricMachine` (+1 discharge) + `ContainerStandardMachine` (+1 input, +1 output, +4 upgrades) + `ContainerAdvancedMachine` (+1/+2 extra outputs) + `ContainerAdvancedMacerator` (+1 supplement), i.e. supplement = container slot **44**.
 * Sprite-table comparison was done programmatically over all 36 `(side, facing)` pairs.
+
+---
+
+## 10. Implementation progress (batches)
+
+Changes are landed as small, tested batches. `./gradlew test --offline` is the gate for every batch.
+
+| Batch | Scope | Status |
+|---|---|---|
+| 1 | Test harness (JUnit), `MachineMath` extraction, speed/math tests, config validation (§1.14) | ✅ done |
+| 2 | Macerator supplement correctness (§1.1, §1.2, §1.10, §1.12) | ⬜ pending |
+| 3 | Speed energy gating + redstone stall removal (§1.4, §1.6) | ⬜ pending |
+| 4 | Container/block/index/drops robustness (§1.3, §1.8, §1.11, §1.13) | ⬜ pending |
+| 5 | Recycler scrap chance + polish/localization/build metadata (§1.7, §4, §7, §1.15) | ⬜ pending |
+
+### Batch 1 details (done)
+
+* Added `src/test` JUnit 4 coverage (14 tests) via `testImplementation("junit:junit:4.13.2")`.
+* Extracted the pure speed/energy math into `MachineMath` and unit tested it: the original
+  integer-division ramp, its bounds/overflow cases, and every degenerate config combination.
+  `CommonLogicAdvancedMachines` now delegates to it.
+* Config validation (`ModAdvancedMachines.validateConfig`) repairs `maxMachineSpeedUpFactor < 2`,
+  `maxMachineSpeedUpTicks <= 0` and non-positive/non-finite `machinePowerDrawFactor`, writing the
+  corrected values back so the config self-heals. Resolves the validation half of §1.14.
+* The new tests immediately caught two real clamp bugs in the new code (negative and
+  `Integer.MAX_VALUE`-overflowing speed values), demonstrating the value of the harness.

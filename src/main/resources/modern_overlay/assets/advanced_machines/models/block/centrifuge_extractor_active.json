@@ -1,8 +1,0 @@
-{
-	"parent": "advanced_machines:block/centrifuge_extractor",
-	"textures": {
-		"north": "advanced_machines:block/extractor/extractor_front_active",
-		"east": "advanced_machines:block/extractor/extractor_side_active_a",
-		"west": "advanced_machines:block/extractor/extractor_side_active_a"
-	}
-}

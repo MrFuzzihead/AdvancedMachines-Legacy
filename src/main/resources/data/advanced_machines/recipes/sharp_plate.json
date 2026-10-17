@@ -1,9 +1,0 @@
-{
-  "type": "minecraft:crafting_shaped",
-  "pattern": [ "FFF", "FPF", "FFF" ],
-  "key": {
-    "F": { "item": "minecraft:flint" },
-    "P": { "item": "ic2:iron_plate" }
-  },
-  "result": { "item": "advanced_machines:sharp_plate", "count": 1 }
-}

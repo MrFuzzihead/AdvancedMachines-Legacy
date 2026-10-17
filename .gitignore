@@ -1,24 +1,38 @@
-# Gradle
-.gradle/
-build/
-
-# Forge / ForgeGradle
-run/
-eclipse/
+.gradle
+.settings
+/.idea/
+/.vscode/
+/run/
+/build/
+/eclipse/
 .classpath
 .project
-.settings/
-
-# IDEA
-.idea/
+/bin/
+/config/
+/crash-reports/
+/logs/
+options.txt
+/saves/
+usernamecache.json
+banned-ips.json
+banned-players.json
+eula.txt
+ops.json
+server.properties
+servers.dat
+usercache.json
+whitelist.json
+/out/
 *.iml
-out/
-
-# OS
-.DS_Store
-
-# Local decompile/deobf working files
-/scratch/
-
-# Vendored IC2 dev jar — not committed; build it from ../ic2 (see README).
-/libs/*.jar
+*.ipr
+*.iws
+*.bat
+*.DS_Store
+!gradlew.bat
+.factorypath
+addon.local.gradle
+addon.local.gradle.kts
+addon.late.local.gradle
+addon.late.local.gradle.kts
+layout.json
+/migrate/

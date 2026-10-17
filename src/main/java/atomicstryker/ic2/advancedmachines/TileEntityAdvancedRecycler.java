@@ -10,7 +10,7 @@ import ic2.api.recipe.RecipeOutput;
 import ic2.core.block.invslot.InvSlotOutput;
 import ic2.core.block.machine.tileentity.TileEntityRecycler;
 
-public class TileEntityAdvancedRecycler extends TileEntityRecycler implements IAdvancedMachine {
+public class TileEntityAdvancedRecycler extends TileEntityRecycler implements IAdvancedMachine, IProgressAccess {
 
     private final CommonLogicAdvancedMachines advLogic;
 
@@ -77,6 +77,16 @@ public class TileEntityAdvancedRecycler extends TileEntityRecycler implements IA
     @Override
     public ArrayList<InvSlotOutput> getOutputSlots() {
         return advLogic.getOutputSlots();
+    }
+
+    @Override
+    public short getRawProgress() {
+        return progress;
+    }
+
+    @Override
+    public void setRawProgress(short value) {
+        progress = value;
     }
 
 }

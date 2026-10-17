@@ -14,17 +14,19 @@
 | 2 | **Critical** | `getOutput()` re-creates an output after the helper deliberately refused (output full / no water) → **input consumed, output voided** | `TileEntityAdvancedMacerator.java:115-130` |
 | 3 | **Critical** | Supplement slot click handler checks the **container slot index 8** (a player hotbar slot) instead of the supplement slot (index 44) → **deletes a player item** | `ContainerAdvancedMacerator.java:22-35` |
 | 4 | **High** | Speed hack **adds progress for free when the machine has no energy** → up to 10× speed while many progress ticks cost no EU | `CommonLogicAdvancedMachines.java:129-152` |
-| 5 | **High** | Progress is manipulated via **reflection**; failure silently disables speed and also disables the only guard on the dummy-redstone path | `CommonLogicAdvancedMachines.java:29-56, 129-159` |
+| 5 | **High** | Progress is manipulated via **reflection**; failure silently disables speed and also disables the only guard on the dummy-redstone path — **FIXED** (§1.5) | `CommonLogicAdvancedMachines.java:29-56, 129-159` |
 | 6 | **High** | Redstone "stall" injects a fake **dirt** `RecipeOutput`; can crash (`consume without a processing result`) or emit dirt in edge cases | `CommonLogicAdvancedMachines.java:26, 75-115, 117-127` |
 | 7 | **High** | Combined Recycler bypasses the base recycler's **1-in-8 scrap chance** → 8× scrap yield | `TileEntityAdvancedRecycler.java:57-60` vs IC2 `TileEntityRecycler.operateOnce` |
 | 8 | **High** | Mining drops the **IC2 basic machine block** (`blockMachine:0`), not the advanced machine (`:12`) the code intends | `BlockAdvancedMachines.java:213-216` + missing `damageDropped` |
-| 9 | **High** | Client icon table is the **IC2 1.6.4** table; reflection target no longer exists → wrong face textures for 12/36 (side, facing) pairs | `client/AdvancedMachinesClient.java:21-33` |
+| 9 | **High** | Client icon table is the **IC2 1.6.4** table; reflection target no longer exists → wrong face textures for 12/36 (side, facing) pairs — **FIXED** (§1.9) | `client/AdvancedMachinesClient.java:21-33` |
 | 10 | **Medium** | Macerator supplement state not persisted; unguarded stack math can NPE / go negative / leave 0-size phantom stacks | `TileEntityAdvancedMacerator.java:201-217` |
 | 11 | **Medium** | `isItemValidForSlot` / `canExtractItem` mix up legacy `oldStartIndex` with live inventory indexes → automation can pull upgrades out of the 3rd upgrade slot | `TileEntityAdvancedMacerator.java:240-256` |
 | 12 | **Medium** | Identity recipes are pushed into the **global** `Recipes.macerator`, affecting plain IC2 Macerators, and use an uncacheable stateful `IRecipeInput` hack | `ModAdvancedMachines.java:125-131, 177-209` |
 | 13 | **Medium** | Block/rendering robustness: no meta bounds check (AIOOBE), no TE null checks, `onBlockPlacedBy` runs on the client, dead `breakBlock` loop | `BlockAdvancedMachines.java:127-140, 183-210, 228-252, 259-261` |
 | 14 | **Low** | `machinePowerDrawFactor` applied after `super.setOverclockRates()`; no config validation (divide-by-zero kills speed) | `CommonLogicAdvancedMachines.java:148-149, 161-177` |
 | 15 | **Low** | Stale `@Mod(version/dependencies)`, hardcoded English GUI strings, no README, mcmod.info template leftovers | `ModAdvancedMachines.java:31-36`, GUIs, `README.md`, `mcmod.info` |
+
+> **Reflection cleanup applied:** items **#5** and **#9** are resolved — both reflective accesses were removed without mixins. Notably, this was possible because neither access was actually blocked (`progress` is `protected`, and the 1.7.10 sprite mapping is exposed by IC2 as the public static `BlockBase.getTextureSubIndex(int, int)`). See the *Resolved* notes in §1.5 and §1.9. The speed formula's divide-by-zero crash path is guarded as part of the same change (§1.5 / §14).
 
 ---
 
@@ -149,6 +151,8 @@ progressField.setAccessible(true);
 
 **Fix:** add a `protected void setRawProgress(short)` / `getRawProgress()` accessor to an abstract advanced-machine base class (which *is* a subclass of `TileEntityStandardMachine`), and have the helper take that interface/lambda. Validate config values at load time.
 
+> **Resolved (reflection removed, no mixins).** Implemented as a small `IProgressAccess` interface (`getRawProgress()` / `setRawProgress(short)`) which all five `TileEntityAdvanced*` classes implement by reading/writing the inherited `protected short progress` directly. `CommonLogicAdvancedMachines.updateEntity(TileEntityStandardMachine)` now casts the machine to `IProgressAccess` and calls the accessors; the `Field`, `failed`, and `setAccessible(true)` machinery are gone. This also removes the per-tick reflective boxing/access-check cost and the "lookup failed → speed silently disabled" failure mode. As a bonus the `maxMachineSpeedUpFactor <= 1` / `maxMachineSpeedUpTicks` divide-by-zero is guarded, and the original integer-division speed math is preserved. The deeper behavioural problems (§1.4 free progress, §1.6 dummy dirt output) are *not* addressed by this cleanup.
+
 ### 1.6 The dummy dirt output (redstone behavior is inverted and unsafe)
 
 `CommonLogicAdvancedMachines` line 26:
@@ -230,6 +234,8 @@ In IC2 2.2.828:
 Comparing the mod's fallback (transposed) with 2.2.828's `BlockBase.facingAndSideToSpriteOffset` programmatically shows **12 of 36 (side, facing) combinations map to a different sprite index**. Most mod machines happen to use the same texture for indices 2/4/5 (`sideplate`), so the visible damage is limited to the one machine with a distinct back texture — the **Rotary Ore Washer** (`back32` vs `sideOreWasherOFF`) — but the mapping is objectively wrong for all of them and will produce wrong faces whenever textures diverge.
 
 **Fix:** delete the reflection and copy the 2.2.828 table with correct orientation, or (internally) call `ic2.core.block.BlockBase.getTextureSubIndex(facing, side)` — being aware that it is IC2-internal, not API. Note the field is also `private`, so `getField` could never find it anyway.
+
+> **Resolved (reflection removed, no mixins).** The dead `Class.forName("ic2.core.block.BlockMultiID").getField("sideAndFacingToSpriteOffset")` lookup and the wrong 1.6.4 fallback table were deleted from `AdvancedMachinesClient` (its `load()` is now a NOOP). `BlockAdvancedMachines.getIcon(IBlockAccess, …)` now uses IC2's own `BlockBase.getTextureSubIndex(facing, blockSide)` and adds `+6` for the active texture set, exactly as `BlockMultiID.getIcon` does; the inventory `getIcon(int, int)` uses `getTextureSubIndex(3, blockSide)` (IC2's default facing). This fixes the 12/36 wrong face mappings, including the Rotary Ore Washer's `back32` back face, and removes the last client-class reference from the common block class.
 
 ---
 

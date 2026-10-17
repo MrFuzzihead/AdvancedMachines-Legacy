@@ -18,18 +18,9 @@ import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
 public class AdvancedMachinesClient implements IProxy {
 
-    public static int[][] sideAndFacingToSpriteOffset;
-
     @Override
     public void load() {
-        try {
-            sideAndFacingToSpriteOffset = (int[][]) Class.forName("ic2.core.block.BlockMultiID")
-                .getField("sideAndFacingToSpriteOffset")
-                .get(null);
-        } catch (Exception e) {
-            sideAndFacingToSpriteOffset = new int[][] { { 3, 2, 0, 0, 0, 0 }, { 2, 3, 1, 1, 1, 1 },
-                { 1, 1, 3, 2, 5, 4 }, { 0, 0, 2, 3, 4, 5 }, { 4, 5, 4, 5, 3, 2 }, { 5, 4, 5, 4, 2, 3 } };
-        }
+        // NOOP: face/back texture selection is handled by IC2's BlockBase#getTextureSubIndex.
     }
 
     @Override

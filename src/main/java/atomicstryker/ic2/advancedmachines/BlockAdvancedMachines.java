@@ -21,10 +21,10 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import atomicstryker.ic2.advancedmachines.client.AdvancedMachinesClient;
 import ic2.api.item.IC2Items;
 import ic2.api.tile.IWrenchable;
 import ic2.core.IC2;
+import ic2.core.block.BlockBase;
 import ic2.core.block.TileEntityBlock;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
@@ -129,14 +129,18 @@ public class BlockAdvancedMachines extends BlockContainer {
         TileEntity te = world.getTileEntity(x, y, z);
         int facing = (te instanceof TileEntityBlock) ? ((int) (((TileEntityBlock) te).getFacing())) : 0;
 
-        if (isActive(world, x, y, z))
-            return iconBuffer[blockMeta][AdvancedMachinesClient.sideAndFacingToSpriteOffset[blockSide][facing] + 6];
-        else return iconBuffer[blockMeta][AdvancedMachinesClient.sideAndFacingToSpriteOffset[blockSide][facing]];
+        // IC2's own face mapping, indexed [facing][side]. The +6 selects the running (ON) texture set.
+        int subIndex = BlockBase.getTextureSubIndex(facing, blockSide);
+        if (isActive(world, x, y, z)) {
+            subIndex += 6;
+        }
+        return iconBuffer[blockMeta][subIndex];
     }
 
     @Override
     public IIcon getIcon(int blockSide, int blockMeta) {
-        return iconBuffer[blockMeta][AdvancedMachinesClient.sideAndFacingToSpriteOffset[blockSide][3]];
+        // Inventory rendering: IC2's default facing is 3.
+        return iconBuffer[blockMeta][BlockBase.getTextureSubIndex(3, blockSide)];
     }
 
     @Override

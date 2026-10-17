@@ -1,6 +1,5 @@
 package atomicstryker.ic2.advancedmachines;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,26 +24,12 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     private final int dataScaling;
     private final RecipeOutput dummyOut = new RecipeOutput(new NBTTagCompound(), new ItemStack(Blocks.dirt));
 
-    private static boolean failed;
-    private static Field progressField;
-
     public CommonLogicAdvancedMachines(String dF, int dS) {
         mod = ModAdvancedMachines.instance;
         outSlotList = new ArrayList<InvSlotOutput>();
         speed = 0;
         dataFormat = dF;
         dataScaling = dS;
-
-        if (progressField == null && !failed) {
-            try {
-                progressField = TileEntityStandardMachine.class.getDeclaredField("progress");
-                progressField.setAccessible(true);
-            } catch (Exception e) {
-                System.out.println("Advanced Machines failed hacking into IC2 TileEntityStandardMachine");
-                e.printStackTrace();
-                failed = true;
-            }
-        }
     }
 
     @Override
@@ -127,35 +112,38 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     }
 
     public void updateEntity(TileEntityStandardMachine te) {
-        try {
-            if (progressField != null) {
-                if (te.getActive()) {
-                    speed = Math.min(mod.maxMachineSpeedUpTicks, speed + 1);
-                } else {
-                    speed = Math.max(0, speed - 1);
-                }
-
-                if (runningEmpty) {
-                    progressField.set(te, (short) 0);
-                } else {
-                    // progress typically goes from 0(start) to
-                    // 400,500(operation end) and gets incremented by 1 every
-                    // tick
-                    // additionally, setOverClockRates may mess with it and
-                    // further increment it
-                    // the goal here is to increase the base processing speed to
-                    // up to N*100% by calculating the speed
-                    short extraprogress = (short) Math
-                        .round(speed / (mod.maxMachineSpeedUpTicks / (mod.maxMachineSpeedUpFactor - 1)));
-                    // this yields 0-n extra progress ticks
-                    progressField.set(te, (short) (progressField.getShort(te) + extraprogress));
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Advanced Machines screwed up hacking into IC2 TileEntityStandardMachine");
-            e.printStackTrace();
-            progressField = null;
+        if (!(te instanceof IProgressAccess)) {
+            return;
         }
+        IProgressAccess progress = (IProgressAccess) te;
+
+        if (te.getActive()) {
+            speed = Math.min(mod.maxMachineSpeedUpTicks, speed + 1);
+        } else {
+            speed = Math.max(0, speed - 1);
+        }
+
+        if (runningEmpty) {
+            progress.setRawProgress((short) 0);
+            return;
+        }
+
+        // progress typically goes from 0(start) to 400,500(operation end) and gets incremented by 1
+        // every tick. Additionally, setOverClockRates may mess with it and further increment it. The
+        // goal here is to increase the base processing speed to up to N*100% by calculating the speed.
+        //
+        // This yields 0-n extra progress ticks. Guard the divisions instead of letting them throw and
+        // silently disabling the speed logic as the old reflective implementation did.
+        int speedUpFactor = mod.maxMachineSpeedUpFactor - 1;
+        if (speedUpFactor <= 0 || mod.maxMachineSpeedUpTicks <= 0) {
+            return;
+        }
+        int ticksPerExtraProgress = mod.maxMachineSpeedUpTicks / speedUpFactor;
+        if (ticksPerExtraProgress <= 0) {
+            return;
+        }
+        short extraProgress = (short) (speed / ticksPerExtraProgress);
+        progress.setRawProgress((short) (progress.getRawProgress() + extraProgress));
     }
 
     public void setOverclockRates(TileEntityStandardMachine te) {

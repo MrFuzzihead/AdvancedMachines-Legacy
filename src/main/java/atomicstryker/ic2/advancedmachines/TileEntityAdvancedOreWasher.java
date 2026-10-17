@@ -10,7 +10,7 @@ import ic2.api.recipe.RecipeOutput;
 import ic2.core.block.invslot.InvSlotOutput;
 import ic2.core.block.machine.tileentity.TileEntityOreWashing;
 
-public class TileEntityAdvancedOreWasher extends TileEntityOreWashing implements IAdvancedMachine {
+public class TileEntityAdvancedOreWasher extends TileEntityOreWashing implements IAdvancedMachine, IProgressAccess {
 
     private final CommonLogicAdvancedMachines advLogic;
 
@@ -74,6 +74,16 @@ public class TileEntityAdvancedOreWasher extends TileEntityOreWashing implements
     @Override
     public ArrayList<InvSlotOutput> getOutputSlots() {
         return advLogic.getOutputSlots();
+    }
+
+    @Override
+    public short getRawProgress() {
+        return progress;
+    }
+
+    @Override
+    public void setRawProgress(short value) {
+        progress = value;
     }
 
 }

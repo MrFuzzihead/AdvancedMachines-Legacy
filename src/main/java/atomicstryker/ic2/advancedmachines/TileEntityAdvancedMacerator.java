@@ -16,7 +16,7 @@ import ic2.core.block.invslot.InvSlot;
 import ic2.core.block.invslot.InvSlotOutput;
 import ic2.core.block.machine.tileentity.TileEntityMacerator;
 
-public class TileEntityAdvancedMacerator extends TileEntityMacerator implements IAdvancedMachine {
+public class TileEntityAdvancedMacerator extends TileEntityMacerator implements IAdvancedMachine, IProgressAccess {
 
     public static final int MAIN_IN_SLOT_INDEX = 0;
     public static final int SUPPLEMENT_SLOT_INDEX = 8;
@@ -253,6 +253,16 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
             return true;
         }
         return super.canExtractItem(slot, itemstack, blockSide);
+    }
+
+    @Override
+    public short getRawProgress() {
+        return progress;
+    }
+
+    @Override
+    public void setRawProgress(short value) {
+        progress = value;
     }
 
 }

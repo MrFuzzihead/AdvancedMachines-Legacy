@@ -42,6 +42,8 @@ public class ContainerAdvancedMachine<T extends TileEntityStandardMachine> exten
                         115,
                         53));
             }
+
+        CappedUpgradeSlot.replaceUpgradeSlots(this, tileEntity.upgradeSlot);
     }
 
     @Override

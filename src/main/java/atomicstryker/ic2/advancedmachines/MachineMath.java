@@ -100,6 +100,11 @@ public final class MachineMath {
         return Math.max(0, overclockers - max);
     }
 
+    /** @return true when {@code amount} more overclockers still fit under {@code max}. */
+    public static boolean canAddOverclockers(int current, int amount, int max) {
+        return current + amount <= max;
+    }
+
     /**
      * One-in-{@code chance} roll, mirroring IC2's recycler scrap chance. A non-positive chance is
      * treated as "always" so it can never throw from {@link Random#nextInt(int)}.

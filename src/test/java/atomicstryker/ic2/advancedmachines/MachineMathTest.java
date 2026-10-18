@@ -134,6 +134,16 @@ public class MachineMathTest {
     }
 
     @Test
+    public void overclockersFitUntilTheCap() {
+        assertTrue(MachineMath.canAddOverclockers(0, 6, MachineMath.MAX_OVERCLOCKERS));
+        assertTrue(MachineMath.canAddOverclockers(5, 1, MachineMath.MAX_OVERCLOCKERS));
+        assertTrue(MachineMath.canAddOverclockers(6, 0, MachineMath.MAX_OVERCLOCKERS));
+        assertFalse(MachineMath.canAddOverclockers(6, 1, MachineMath.MAX_OVERCLOCKERS));
+        assertFalse(MachineMath.canAddOverclockers(4, 3, MachineMath.MAX_OVERCLOCKERS));
+        assertFalse(MachineMath.canAddOverclockers(0, 7, MachineMath.MAX_OVERCLOCKERS));
+    }
+
+    @Test
     public void configValidation() {
         assertTrue(MachineMath.isValidSpeedConfig(10, 10000));
         assertTrue(MachineMath.isValidSpeedConfig(2, 1));

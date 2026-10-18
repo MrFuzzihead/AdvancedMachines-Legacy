@@ -339,7 +339,13 @@ Washer-specific notes:
 * **Speed is implemented as raw `progress` injection, not as IC2's `operationLength`/`operationsPerTick` model.** This bypasses `getProgress()`/`guiProgress` (GUI lags), the comparator, and IC2's own overclocker math, and creates the free-energy hole (§1.4). Doing `operationLength = round(operationLength / speedFactor)` inside `setOverclockRates()` after `super` (and recomputing `progress`) would use IC2's own accounting and delete the need for reflection, `dummyOut`, and most of the shared logic.
 * **`energyConsume` is multiplied after `super.setOverclockRates()`**, so `maxEnergy = defaultEnergyStorage + operationLength * energyConsume` is computed with the *old* value. The internal buffer is 3× too small relative to the draw; a powered machine with a full buffer can only sustain ~1/3 as many ticks. Consider `te.maxEnergy = Math.max(te.maxEnergy, te.operationLength * te.energyConsume)` after the multiplication.
 * **Extra output slots are good** (`InvSlotOutput`, bottom-side extraction, correct container slots) and match IC2 conventions.
-* **Overclocker cap:** the mod creates an explosion when > 6 overclockers are installed. IC2 has no such concept; the explosion is unreliable (strength 3 may not remove the block), fires repeatedly on every `setOverclockRates()` (i.e. every inventory change) and does not prevent the real hazard: IC2's `InvSlotUpgrade` allows **stacked** overclockers, and with enough of them `operationsPerTick` explodes into the millions, hanging the server inside `operate()`. A hard cap enforced at insert time (rejecting the item / limiting slot stack size) would be safer than an explosion.
+* **Overclocker cap:** historically the mod exploded above 6 overclockers, then (first fix) ejected
+the excess. It is now capped at insert time: `CappedUpgradeSlot` replaces the container's upgrade
+slots and refuses an overclocker once the machine already holds 6 (`MachineMath.MAX_OVERCLOCKERS`).
+This also closes the real hazard: IC2's `InvSlotUpgrade` allows **stacked** overclockers, and enough of
+them make `operationsPerTick` explode into the millions, hanging the server inside `operate()`.
+Automation cannot insert upgrades at all (IC2's `InvSlotUpgrade` uses `Access.NONE`), and a fallback
+ejection still exists for NBT/legacy/other-mod insertion.
 * **`getInventoryName()`** is inherited from the base machines ("Macerator", "Compressor", …), so WAILA/NEI/other integrations label the advanced machines with the base names. Overriding it (or the tile registration names) is a small consistency win.
 * **`getGui()`** is also inherited and returns the *base* GUI; harmless today because the mod's own `IGuiHandler` is used, but any mod that opens an IC2 machine GUI directly (`IHasGui.getGui`) would get the wrong screen.
 
@@ -595,8 +601,9 @@ items below were implemented in the follow-up pass (see §15):
   centred title to make room for it.
 * ~~**`getGui()` / `getGuiContainer()` overrides.**~~ **Done.** All five machines return their own GUI
   and container, so mods that bypass the mod's `IGuiHandler` get the advanced screen too.
-* ~~**Hard overclocker cap.**~~ **Done.** Overclockers beyond 6 are ejected (dropped at the machine)
-  before the base rate calculation, instead of firing an explosion.
+* ~~**Hard overclocker cap.**~~ **Done.** The container's upgrade slots are replaced by
+  `CappedUpgradeSlot`, which refuses a seventh overclocker at insert time; a fallback ejection covers
+  items forced in by other mods/legacy saves.
 * ~~**Machine tooltips.**~~ **Done.** `ItemAdvancedMachine` shows IC2's
   `"Power X EU/t, Y EU/t max"` line, computed from the configured power multiplier.
 * **Performance polish.** `getIcon` does a single tile-entity lookup. The remaining per-tick
@@ -856,9 +863,47 @@ Implemented after the second in-game pass:
   have. The five GUIs were reduced to hooks for their own sprites/text.
 * **`getGui()` / `getGuiContainer()`.** Every machine now returns its advanced GUI/container, so IC2's
   `launchGui` path and other mods that bypass the mod's `IGuiHandler` get the correct screen.
-* **Hard overclocker cap.** `CommonLogicAdvancedMachines.enforceOverclockerCap` runs before the base
-  rate calculation and ejects overclockers beyond `MachineMath.MAX_OVERCLOCKERS` (6) as dropped items.
-  Replaces the once-only explosion. `MachineMath.excessOverclockers` is unit tested.
+* **Hard overclocker cap.** `CappedUpgradeSlot.replaceUpgradeSlots` swaps the container's upgrade
+  slots for capped ones that refuse an overclocker once `MachineMath.countOverclockers` reaches
+  `MachineMath.MAX_OVERCLOCKERS` (6); `enforceOverclockerCap` remains as a fallback ejection for items
+  forced in externally. `MachineMath.canAddOverclockers`/`excessOverclockers` and the slot replacement
+  are unit tested.
 * **Item tooltips.** `ItemAdvancedMachine.addInformation` emits IC2's
   `"Power X EU/t, Y EU/t max"` line using the configured power multiplier (2->6, 1->3, 16->48 EU/t at
   the default 3x; 32 EU/t max). Covered by `ItemAdvancedMachineTest`.
+
+---
+
+## 16. IC2 ↔ Advanced Machines unification status
+
+After the batches above, the five advanced machines behave like IC2 machines wherever they are not
+deliberately "advanced". Summary:
+
+| Area | Advanced Machines | IC2 base machine | Status |
+|---|---|---|---|
+| Recipes | `Recipes.macerator` etc. | same managers | unified |
+| EU/t while working | base × `machinePowerDrawFactor` (default 3×) | base (2/2/2/1/16) | deliberate buff |
+| Operation length / overclockers | inherited IC2 `operationLength`/`operationsPerTick` | same | unified |
+| Tier / voltage | tier 1, "32 EU/t max" | tier 1, "32 EU/t max" | unified |
+| Over-voltage | no destruction (same as base in 2.2.828) | no destruction | unified (both lax) |
+| Wrench | front = remove (0.85), other faces = rotate, honours `balance/ignoreWrenchRequirement` | same | unified |
+| Drops | mining → IC2 advanced-machine casing + contents; wrench → machine + contents | mining → machine casing + contents; wrench → machine | unified pattern |
+| Item tooltip | IC2's `Power X EU/t, Y EU/t max` | same | unified (values scaled) |
+| GUI chrome | IC2 compatible-upgrade info button + tooltip, localised labels, centred title | same | unified |
+| `getGui()`/`getGuiContainer()` | own advanced screen/container | own screen/container | unified pattern |
+| Upgrade slots | IC2 `InvSlotUpgrade`, but capped at 6 overclockers | uncapped | deliberate balance |
+| Automation access | same `InvSlot` semantics; extra output slots are `InvSlotOutput` (bottom) | same, fewer outputs | deliberate extra slots |
+| Sounds | inherited from the base machine | own | unified |
+| `getInventoryName()` | "Rotary Macerator" etc. | "Macerator" etc. | deliberate naming |
+| Redstone | idles while powered (no progress, no EU) | ignores redstone (no `Redstone` component in 2.2.828) | **difference** |
+| Speed model | extra `progress` ticks per tick, ramping to 10× | `operationLength`/`operationsPerTick` | **difference** |
+| Supplements | removed entirely | n/a | n/a |
+
+Remaining intentional differences are only the "advanced" gameplay: the speed ramp, the power-draw
+multiplier, the extra output slots, the overclocker cap and the redstone-idle. Everything structural
+(recipes, tiers, wrench, drops, GUI, tooltips, upgrade slots, automation) now follows IC2.
+
+### Outstanding analysis work
+
+None required. The only open items are deliberate deferrals: voltage enforcement (§14) and the
+low-priority `getOutput` allocation note (§10). The executive-summary list is fully resolved.

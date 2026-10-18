@@ -16,6 +16,7 @@ public class ContainerAdvancedOreWasher extends ContainerOreWashing {
     public ContainerAdvancedOreWasher(EntityPlayer entityPlayer, TileEntityAdvancedOreWasher tileEntity) {
         super(entityPlayer, tileEntity);
         speedSync = new AdvancedMachineSpeedSync(tileEntity);
+        CappedUpgradeSlot.replaceUpgradeSlots(this, tileEntity.upgradeSlot);
     }
 
     @Override

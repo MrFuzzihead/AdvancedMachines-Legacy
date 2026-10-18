@@ -11,6 +11,7 @@ import net.minecraft.world.World;
 import ic2.api.recipe.RecipeOutput;
 import ic2.core.block.TileEntityLiquidTankStandardMaschine;
 import ic2.core.block.invslot.InvSlotOutput;
+import ic2.core.block.invslot.InvSlotUpgrade;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 import ic2.core.item.ItemUpgradeModule;
 
@@ -205,12 +206,12 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     }
 
     /**
-     * Removes (and drops) any overclockers beyond {@link MachineMath#MAX_OVERCLOCKERS}. Called before
-     * the base rate calculation so the machine never trades on an over-stacked slot. Replaces the old
-     * behaviour of exploding the machine, which could fire repeatedly and damage the surroundings.
+     * Fallback guard: ejects overclockers beyond {@link MachineMath#MAX_OVERCLOCKERS}. Normal play is
+     * now capped at insert time by {@link CappedUpgradeSlot}, so this only catches items forced in by
+     * other mods, legacy saves or NBT edits. Replaces the old behaviour of exploding the machine.
      */
     public void enforceOverclockerCap(TileEntityStandardMachine te) {
-        int overclockers = countOverclockers(te);
+        int overclockers = countOverclockers(te.upgradeSlot);
         int excess = MachineMath.excessOverclockers(overclockers, MachineMath.MAX_OVERCLOCKERS);
         if (excess <= 0) {
             return;
@@ -236,10 +237,10 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
         }
     }
 
-    private static int countOverclockers(TileEntityStandardMachine te) {
+    public static int countOverclockers(InvSlotUpgrade upgradeSlot) {
         int overclockers = 0;
-        for (int i = 0; i < te.upgradeSlot.size(); i++) {
-            ItemStack stack = te.upgradeSlot.get(i);
+        for (int i = 0; i < upgradeSlot.size(); i++) {
+            ItemStack stack = upgradeSlot.get(i);
             if (isOverclocker(stack)) {
                 overclockers += stack.stackSize;
             }
@@ -247,8 +248,21 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
         return overclockers;
     }
 
-    private static boolean isOverclocker(ItemStack stack) {
+    public static boolean isOverclocker(ItemStack stack) {
         return stack != null && stack.getItem() instanceof ItemUpgradeModule && stack.getItemDamage() == 0;
+    }
+
+    /**
+     * @return true when {@code stack} may be placed into the upgrade slot without exceeding
+     *         {@link MachineMath#MAX_OVERCLOCKERS}. Non-overclockers always pass (IC2's own
+     *         {@code InvSlotUpgrade.accepts} decides whether they are valid upgrades).
+     */
+    public static boolean canAcceptOverclockers(InvSlotUpgrade upgradeSlot, ItemStack stack) {
+        if (!isOverclocker(stack)) {
+            return true;
+        }
+        return MachineMath
+            .canAddOverclockers(countOverclockers(upgradeSlot), stack.stackSize, MachineMath.MAX_OVERCLOCKERS);
     }
 
     private static void dropAtMachine(World world, TileEntityStandardMachine te, ItemStack stack) {

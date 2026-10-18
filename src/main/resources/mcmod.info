@@ -1,0 +1,24 @@
+{
+  "modListVersion": 2,
+  "modList": [{
+    "modid": "${modId}",
+    "name": "${modName}",
+    "description": "Some additional Machines for the electrical Connoisseur",
+    "version": "${modVersion}",
+    "mcversion": "${minecraftVersion}",
+    "url": "https://github.com/MrFuzzihead/AdvancedMachines-Legacy",
+    "updateUrl": "https://github.com/MrFuzzihead/AdvancedMachines-Legacy/releases/latest",
+    "authorList": [
+      "MrFuzzihead",
+      "AtomicStryker"
+    ],
+    "credits": "IC2 Team",
+    "logoFile": "assets/advancedmachines/textures/gui/logo.png",
+    "screenshots": [],
+    "parent": "",
+    "requiredMods": [],
+    "dependencies": [],
+    "dependants": [],
+    "useDependencyInformation": false
+  }]
+}

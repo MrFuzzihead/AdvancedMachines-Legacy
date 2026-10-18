@@ -1,0 +1,36 @@
+1. Does Advanced Machines follow IC2's config for the wrench and percent chance for the machine to break instead of drop?
+
+2. Do Advanced Machines require transformers ever? I can run an MFSU directly into an Advanced Machine via Glass Fibre Cable, and it doesn't explode, it works normally.
+
+3. Let's remove the supplements system entirely from the codebase, as well as removing it from the GUI png assets
+
+--- Resolution, second pass (assistant) ---
+
+1. YES on both counts. The mod forwards IC2's `balance/ignoreWrenchRequirement` option through
+   getItemDropped/damageDropped, and the machine-break chance is the base machine's inherited
+   getWrenchDropRate() of 0.85 (i.e. 15% break-instead-of-drop), exactly as IC2. There is no separate
+   drop-rate config in IC2 2.2.828 to honour.
+
+2. NOT A BUG (verified on the exact IC2 jar Gradle resolves). Standard IC2 machines do not explode
+   from over-voltage in this build, and neither do cables burn out from it:
+   - TileEntityElectricMachine.injectEnergy(dir, amount, voltage) ignores `voltage` entirely and just
+     adds `amount` up to maxEnergy (confirmed in the bytecode of curse.maven ic2-242638-2353971).
+   - The energy net (ic2/core/energy) contains no createExplosion/ExplosionIC2 call at all; Grid/Node
+     use the tier only for the resistive voltage/current model (and only when
+     misc/useLinearTransferModel=true).
+   - Tile.maxCurrent (cable breakdown) is computed but never read, Node.getMaxCurrent() has no
+     callers, TileEntityCable.removeConductor() is never called, and the cable overload event only
+     plays a fizz/smoke effect. TileEntityLuminator.poof() is also uncalled — the tier/breakdown
+     machinery is present but unwired in 2.2.828.
+   - IC2's own coremod registers no ASM transformer, and your test instance loads only
+     IC2 + NEI + AdvancedMachines.
+   So a base IC2 Macerator fed from an MFSU via glass fibre behaves exactly like an Advanced Machine:
+   no explosion, no transformer needed. The tier is a voltage *class* used by the network/loss model
+   and by transformer (block and upgrade) conversion; enforcing over-voltage destruction would be a
+   new feature, not a fix. (IC2 Classic, IC2E for 1.12.2 and GregTech do enforce it, which is where the
+   common "machines explode" expectation comes from.)
+
+3. DONE. The supplement system has been removed entirely: MaceratorSupplement, ContainerAdvancedMacerator,
+   the supplement slot/state/recipes, the supplement-only output path and its tests. The Rotary
+   Macerator now uses the shared ContainerAdvancedMachine and is a faster macerator with a second output
+   slot. The supplement slot graphic was erased from GUIRotary.png.

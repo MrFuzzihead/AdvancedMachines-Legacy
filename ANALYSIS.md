@@ -28,6 +28,12 @@
 
 > **Reflection cleanup applied:** items **#5** and **#9** are resolved — both reflective accesses were removed without mixins. Notably, this was possible because neither access was actually blocked (`progress` is `protected`, and the 1.7.10 sprite mapping is exposed by IC2 as the public static `BlockBase.getTextureSubIndex(int, int)`). See the *Resolved* notes in §1.5 and §1.9. The speed formula's divide-by-zero crash path is guarded as part of the same change (§1.5 / §14).
 
+> **Supplement system removed (second in-game pass):** the Rotary Macerator's supplement slot and its
+> bonus recipes were deleted at the user's request, including the slot graphic in `GUIRotary.png`. The
+> machine is now a faster macerator with a second output slot, like the other four machines. Items
+> **#1**, **#2**, **#10** and **#12** below describe fixes made to that now-removed system and are kept
+> for history. See §12 for the finding-by-finding resolution.
+
 ---
 
 ## 1. Critical bugs
@@ -590,12 +596,12 @@ cosmetic or design-choice work:
   and adding the button blind would overlap the mod's left-aligned title on its custom textures, so
   it needs an in-game layout pass first. `getGui()` still returns the base IC2 screens for any mod
   that bypasses the mod's own `IGuiHandler`.
-* **Hard overclocker cap.** The >6-overclocker punishment is now bounded (fires once, server-side) but
-  is still an explosion. A proper fix is to reject/cap overclockers at insert time, which needs a
-  custom `InvSlotUpgrade` (IC2 owns the `upgradeSlot` instance, so this is a larger refactor).
-* **Performance polish.** Supplement recipe lookups are no longer per-item (Batch 2 reduced them to
-  the copper branch only), but they are still repeated each tick while a copper result is present and
-  could be memoised per (supplement, input). `getIcon` now does a single tile-entity lookup.
+* **Hard overclocker cap.** The >6-overclocker punishment is bounded (fires once, server-side) but is
+  still an explosion; a proper fix is to reject/cap overclockers at insert time, which needs a custom
+  `InvSlotUpgrade` (IC2 owns the `upgradeSlot` instance, so that is a larger refactor).
+* **Performance polish.** `getIcon` now does a single tile-entity lookup. The remaining per-tick
+  allocations in `CommonLogicAdvancedMachines.getOutput` are IC2-shaped (the base machine also calls
+  `inputSlot.process()` every tick) and are low priority.
 * **Server smoke test** (done): a headless `./gradlew runServer` reached `Done (0.988s)!`, loaded
   `AdvancedMachines`/`IC2`/NEI/CodeChickenCore and shut down cleanly, with no `atomicstryker` stack
   frames. The only log errors are pre-existing dev-environment artifacts (FML signature/binary-patch
@@ -705,11 +711,31 @@ real bugs and are fixed; #4 was a design question.
   approach — `onBlockPreDestroy` stashes the tile entity (bounded to 8) and `getDrops` falls back to
   the stash when the live one is gone; `onBlockAdded` clears stale entries. (The earlier note claiming
   this already worked was wrong and has been corrected in §8.)
-* **#4 Supplements.** Not a bug: the supplement system is the Rotary Macerator's signature feature and
-  is now bug-fixed and covered by 16 decision-table + 12 tile-entity tests. It is cleanly removable if
-  a smaller surface is preferred (remove `MaceratorSupplement`, the supplement slot/state and the
-  `NO_RECIPE` supplement path in `TileEntityAdvancedMacerator`, and the supplement GUI slot), but the
-  recommendation is to keep it and spend one in-game minute verifying the four recipes.
+* **#4 Supplements.** **REMOVED** at the user's request (second in-game pass). `MaceratorSupplement`, the
+  supplement slot/state, the supplement-only `NO_RECIPE` output path and the supplement GUI slot were
+  deleted, and the slot graphic was erased from `GUIRotary.png`. The Rotary Macerator is now a faster
+  macerator with a second output slot (same shape as the other four machines), and the `IdentRecipe`
+  machinery is long gone. The §1.1/§1.2/§1.10/§1.12 fixes and `MaceratorSupplementTest` are therefore
+  historical.
 
 **Retest focus:** wrench rotate/remove on each machine (and that no GUI opens), washer RPM readout,
 washer fluid tooltip, and mining a machine with items/upgrades to confirm the contents drop.
+
+---
+
+## 13. Second in-game findings and resolutions
+
+The second in-game pass produced three items (see `Findings.txt`):
+
+* **Wrench config / break chance.** Verified: the mod honours IC2's `balance/ignoreWrenchRequirement`
+  option through `getItemDropped`/`damageDropped`, and the 85% wrench success / 15% break rate is the
+  base machine's `getWrenchDropRate()` value inherited by all five machines — matching IC2 exactly.
+  There is no separate per-machine drop-rate config in 2.2.828.
+* **Transformers / over-voltage.** Verified: IC2 2.2.828 does **not** explode machines from
+  over-voltage. `EnergyNetLocal`/`Grid` never call `createExplosion`; the machine's energy tier only
+  feeds cable melting (`BlockCable`) and voltage-drop/resistance maths, and the legacy
+  `IEnergySink.injectEnergy` accepts any amount. So an MFSU through glass fibre into an Advanced
+  Machine behaves exactly like into a base IC2 machine — no transformer is required for the machine.
+  Transformer gating would be a new feature, not a bug fix.
+* **Supplements removed.** See §12 #4 and the note at the top of this document. `GUIRotary.png` was
+  patched to erase the slot graphic (x 73–91, y 16–33 filled with the panel colour).

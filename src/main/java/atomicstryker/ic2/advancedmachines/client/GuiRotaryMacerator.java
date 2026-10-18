@@ -6,7 +6,7 @@ import net.minecraft.util.StatCollector;
 
 import org.lwjgl.opengl.GL11;
 
-import atomicstryker.ic2.advancedmachines.ContainerAdvancedMacerator;
+import atomicstryker.ic2.advancedmachines.ContainerAdvancedMachine;
 import atomicstryker.ic2.advancedmachines.IAdvancedMachine;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
@@ -14,9 +14,9 @@ public class GuiRotaryMacerator extends GuiContainer {
 
     private static ResourceLocation tex = new ResourceLocation("advancedmachines", "textures/gui/GUIRotary.png");
 
-    private ContainerAdvancedMacerator container;
+    private ContainerAdvancedMachine<TileEntityStandardMachine> container;
 
-    public GuiRotaryMacerator(ContainerAdvancedMacerator csm) {
+    public GuiRotaryMacerator(ContainerAdvancedMachine<TileEntityStandardMachine> csm) {
         super(csm);
         container = csm;
     }

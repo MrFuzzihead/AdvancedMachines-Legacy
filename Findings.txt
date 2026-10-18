@@ -1,31 +1,23 @@
-1. Wrench only ever disassembles the block, it doesn't rotate it. Also, it opens the block's GUI before doing so
+1. Does Advanced Machines follow IC2's config for the wrench and percent chance for the machine to break instead of drop?
 
-2. Rotary ore washer RPM doesn't increase in GUI with use, actual speed does increase
+2. Do Advanced Machines require transformers ever? I can run an MFSU directly into an Advanced Machine via Glass Fibre Cable, and it doesn't explode, it works normally.
 
-3. Rotary ore washer shows unlocalized name for water fluid (ic2.water), not sure if this is intentional or not or an IC2 problem
+3. Let's remove the supplements system entirely from the codebase, as well as removing it from the GUI png assets
 
-4. Didn't test supplements system, can we just remove it?
+--- Resolution, second pass (assistant) ---
 
-5. Breaking Advanced Machine with pick (instead of wrench) doesn't drop any inputs, outputs, or upgrades (overclocker, transformer)
+1. YES on both counts. The mod forwards IC2's `balance/ignoreWrenchRequirement` option through
+   getItemDropped/damageDropped, and the machine-break chance is the base machine's inherited
+   getWrenchDropRate() of 0.85 (i.e. 15% break-instead-of-drop), exactly as IC2. There is no separate
+   drop-rate config in IC2 2.2.828 to honour.
 
---- Resolution (assistant) ---
+2. NOT A BUG. In IC2 2.2.828 the energy tier does not explode machines: EnergyNetLocal/Grid never call
+   createExplosion, the tier is only used for cable melting and voltage-drop maths, and the legacy
+   IEnergySink.injectEnergy accepts any amount. A base IC2 Macerator fed from an MFSU via glass fibre
+   behaves the same way, so no transformer is required for the machine (only for cables that are below
+   the packet tier). Transformer/voltage gating would be a new feature.
 
-1. FIXED: all five machines now override wrenchCanSetFacing (click the front face to remove, any other
-   face to rotate), and onBlockActivated no longer opens the GUI while an IC2 wrench is held (the
-   client right-click path reaches onBlockActivated even when the wrench handles the click server-side).
-
-2. FIXED: the washer used ContainerOreWashing, which had no speed sync, so printFormattedData() always
-   saw 0 on the client. Added AdvancedMachineSpeedSync (shared) + ContainerAdvancedOreWasher, wired on
-   both sides.
-
-3. FIXED (not an IC2 bug per se): 1.7.10 has no translation for fluid names (neither fluid.water nor
-   ic2.water exists; IC2's own GUI prints "water"). The tooltip now uses the Forge unlocalized key when
-   a resource pack provides it, otherwise "Water" (capitalised raw name).
-
-4. NOT A BUG: the supplement system is the Rotary Macerator's signature feature and is now bug-fixed
-   and unit-tested. It is cleanly removable if you want a smaller surface, but I'd recommend keeping it
-   and verifying the four recipes in-game. Say the word and I'll remove it.
-
-5. FIXED: root cause was ItemInWorldManager.tryHarvestBlock removing the tile entity before
-   harvestBlock/getDrops, so mining dropped only the casing. Ported IC2's tesBeforeBreak approach:
-   onBlockPreDestroy stashes the TE and getDrops falls back to it; onBlockAdded clears stale entries.
+3. DONE. The supplement system has been removed entirely: MaceratorSupplement, ContainerAdvancedMacerator,
+   the supplement slot/state/recipes, the supplement-only output path and its tests. The Rotary
+   Macerator now uses the shared ContainerAdvancedMachine and is a faster macerator with a second output
+   slot. The supplement slot graphic was erased from GUIRotary.png.

@@ -4,7 +4,6 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-import atomicstryker.ic2.advancedmachines.ContainerAdvancedMacerator;
 import atomicstryker.ic2.advancedmachines.ContainerAdvancedMachine;
 import atomicstryker.ic2.advancedmachines.ContainerAdvancedOreWasher;
 import atomicstryker.ic2.advancedmachines.IProxy;
@@ -27,7 +26,8 @@ public class AdvancedMachinesClient implements IProxy {
         TileEntity te = world.getTileEntity(x, y, z);
         if (te != null) {
             if (te instanceof TileEntityAdvancedMacerator) {
-                return new GuiRotaryMacerator(new ContainerAdvancedMacerator(player, (TileEntityAdvancedMacerator) te));
+                return new GuiRotaryMacerator(
+                    new ContainerAdvancedMachine<TileEntityStandardMachine>(player, (TileEntityAdvancedMacerator) te));
             } else if (te instanceof TileEntityAdvancedExtractor) {
                 return new GuiCentrifugeExtractor(
                     new ContainerAdvancedMachine<TileEntityStandardMachine>(player, (TileEntityAdvancedExtractor) te));

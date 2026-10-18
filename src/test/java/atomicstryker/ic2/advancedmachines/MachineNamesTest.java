@@ -18,22 +18,6 @@ import ic2.core.BasicMachineRecipeManager;
  */
 public class MachineNamesTest {
 
-    private static final MaceratorSupplement.References NULL_REFS = new MaceratorSupplement.References(
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null);
-
     @BeforeClass
     public static void installRecipeManagers() {
         Recipes.macerator = new BasicMachineRecipeManager();
@@ -44,7 +28,7 @@ public class MachineNamesTest {
 
     @Test
     public void machinesReportTheirOwnNames() {
-        assertEquals("Rotary Macerator", new TileEntityAdvancedMacerator(NULL_REFS).getInventoryName());
+        assertEquals("Rotary Macerator", new TileEntityAdvancedMacerator().getInventoryName());
         assertEquals("Singularity Compressor", new TileEntityAdvancedCompressor().getInventoryName());
         assertEquals("Centrifuge Extractor", new TileEntityAdvancedExtractor().getInventoryName());
         assertEquals("Combined Recycler", new TileEntityAdvancedRecycler().getInventoryName());

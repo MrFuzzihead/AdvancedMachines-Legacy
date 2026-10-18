@@ -40,7 +40,7 @@ public class WrenchRotationTest {
 
     @Test
     public void maceratorRotatesExceptOnItsFrontFace() {
-        assertWrenchFacingBehaviour(new TileEntityAdvancedMacerator(nullRefs()));
+        assertWrenchFacingBehaviour(new TileEntityAdvancedMacerator());
     }
 
     @Test
@@ -56,23 +56,5 @@ public class WrenchRotationTest {
     @Test
     public void recyclerRotatesExceptOnItsFrontFace() {
         assertWrenchFacingBehaviour(new TileEntityAdvancedRecycler());
-    }
-
-    private static MaceratorSupplement.References nullRefs() {
-        return new MaceratorSupplement.References(
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null);
     }
 }

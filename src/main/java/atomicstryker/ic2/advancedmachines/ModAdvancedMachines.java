@@ -242,9 +242,7 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
     public Object getServerGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
         TileEntityStandardMachine tesm = (TileEntityStandardMachine) world.getTileEntity(x, y, z);
         if (tesm != null) {
-            if (tesm instanceof TileEntityAdvancedMacerator) {
-                return new ContainerAdvancedMacerator(player, (TileEntityAdvancedMacerator) tesm);
-            } else if (tesm instanceof TileEntityAdvancedOreWasher) {
+            if (tesm instanceof TileEntityAdvancedOreWasher) {
                 return new ContainerAdvancedOreWasher(player, (TileEntityAdvancedOreWasher) tesm);
             }
 

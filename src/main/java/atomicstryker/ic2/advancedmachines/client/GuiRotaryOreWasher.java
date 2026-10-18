@@ -39,14 +39,29 @@ public class GuiRotaryOreWasher extends GuiContainer {
 
         FluidStack fluidstack = ((TileEntityOreWashing) this.container.base).getFluidStackfromTank();
         if (fluidstack != null && fluidstack.getFluid() != null) {
-            String fluidName = StatCollector.translateToLocal(
-                "ic2." + fluidstack.getFluid()
-                    .getName());
-            String tooltip = fluidName + ": "
+            String tooltip = localizeFluid(fluidstack) + ": "
                 + fluidstack.amount
                 + StatCollector.translateToLocal("ic2.generic.text.mb");
             GuiTooltipHelper.drawAreaTooltip(par1 - this.guiLeft, par2 - this.guiTop, tooltip, 63, 23, 76, 71);
         }
+    }
+
+    /**
+     * 1.7.10 has no vanilla/IC2 translation for fluid names (neither {@code fluid.water} nor
+     * {@code ic2.water} exist), so use a translation when a resource pack provides one and otherwise
+     * fall back to the capitalised raw name instead of printing the untranslated key.
+     */
+    private static String localizeFluid(FluidStack stack) {
+        String key = stack.getUnlocalizedName();
+        if (key != null && StatCollector.canTranslate(key)) {
+            return StatCollector.translateToLocal(key);
+        }
+        String raw = stack.getFluid()
+            .getName();
+        if (raw == null || raw.isEmpty()) {
+            return key == null ? "" : key;
+        }
+        return Character.toUpperCase(raw.charAt(0)) + raw.substring(1);
     }
 
     @Override

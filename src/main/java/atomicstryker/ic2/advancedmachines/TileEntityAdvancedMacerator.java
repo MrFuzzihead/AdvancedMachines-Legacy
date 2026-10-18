@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
@@ -324,6 +325,15 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
     @Override
     public String getInventoryName() {
         return "Rotary Macerator";
+    }
+
+    /**
+     * IC2 wrench convention: clicking the face the machine already faces removes it, clicking any
+     * other face rotates it.
+     */
+    @Override
+    public boolean wrenchCanSetFacing(EntityPlayer player, int side) {
+        return this.getFacing() != side;
     }
 
     /** Whether a supplement effect was applied and how much extra input it consumed. */

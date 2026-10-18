@@ -428,7 +428,7 @@ Washer-specific notes:
 * All `IC2Items.getItem(...)` names used (`crushedCopperOre`, `crushedTinOre`, `coalDust`, `waterCell`, `bronzeDust`, `hydratedCoalDust`, `advancedMachine`, all recipe ingredients) exist in 2.2.828.
 * Wrench drops, sounds, upgrade handling, energy handling and `getUpgradableProperties` are inherited correctly from the base machines (0.85 wrench-drop rate included).
 * The mod's own `IRecipeInput.matches` hack *does* get past IC2's input==output check, and its one-time `false` is mostly harmless — but it is unnecessary in 2.2.828 (see §5).
-* `getDrops` + vanilla `dropBlockAsItemWithChance` do drop the machine's inventory correctly (the custom `breakBlock` is dead code, not a dupe, in the current call order).
+* ~~`getDrops` + vanilla `dropBlockAsItemWithChance` drop the machine's inventory correctly.~~ **WRONG** — in 1.7.10 `ItemInWorldManager.tryHarvestBlock` calls `removeBlock()` (which removes the tile entity) *before* `harvestBlock()`/`getDrops()`, so mining dropped nothing but the casing. See §12; fixed by stashing the tile entity in `onBlockPreDestroy`.
 * `operationsPerTick` stays 1 for all normal (non-overclocked) configurations, so the base `operate()` loop does not multiply the mod's supplement side effects per call.
 
 ---
@@ -677,3 +677,39 @@ items):
 - [ ] Breaking a machine with its GUI open closes the client container.
 - [ ] Config-disabled machines are absent from the creative tab and have no crafting recipe.
 - [ ] Multiplayer: the GUI progress/speed sync and the machine state stay correct for two players.
+
+---
+
+## 12. In-game findings (user test pass) and fixes
+
+The first in-game pass produced five findings (see `Findings.txt`). Findings #1, #2, #3 and #5 were
+real bugs and are fixed; #4 was a design question.
+
+* **#1 Wrench rotated nothing and popped the GUI.** `TileEntityBlock.wrenchCanSetFacing` returns
+  `false`, so the wrench always fell through to removal, and the *client* right-click path calls
+  `onBlockActivated` (the wrench's `onItemUseFirst` returns `false` client-side) which opened the GUI.
+  Fix: all five machines override `wrenchCanSetFacing` (`getFacing() != side`, IC2's convention —
+  click the front face to remove, any other face to rotate), and `onBlockActivated` now returns false
+  while the player holds an `ItemToolWrench`.
+* **#2 Rotary Ore Washer RPM stayed at 0.** Only `ContainerAdvancedMachine` synced the speed counter;
+  the washer uses `ContainerOreWashing`, so `printFormattedData()` always saw speed 0 on the client.
+  Fix: extracted `AdvancedMachineSpeedSync` (shared by both containers) and added
+  `ContainerAdvancedOreWasher`, wired into the server GUI handler and the client proxy.
+* **#3 Fluid tooltip showed `ic2.water`.** 1.7.10 has no translation for fluid names — neither
+  `fluid.water` nor `ic2.water` exists (IC2's own GUI prints the raw lowercase name). Fix: use the
+  Forge unlocalized key when a resource pack translates it, otherwise fall back to the capitalised raw
+  name ("Water") instead of printing a key.
+* **#5 Mining dropped no contents.** Root cause: `ItemInWorldManager.tryHarvestBlock` calls
+  `removeBlock()` (→ `BlockContainer.breakBlock` → `world.removeTileEntity`) **before**
+  `harvestBlock()`/`getDrops()`, so `getDrops` saw no tile entity. Fix: port IC2's `tesBeforeBreak`
+  approach — `onBlockPreDestroy` stashes the tile entity (bounded to 8) and `getDrops` falls back to
+  the stash when the live one is gone; `onBlockAdded` clears stale entries. (The earlier note claiming
+  this already worked was wrong and has been corrected in §8.)
+* **#4 Supplements.** Not a bug: the supplement system is the Rotary Macerator's signature feature and
+  is now bug-fixed and covered by 16 decision-table + 12 tile-entity tests. It is cleanly removable if
+  a smaller surface is preferred (remove `MaceratorSupplement`, the supplement slot/state and the
+  `NO_RECIPE` supplement path in `TileEntityAdvancedMacerator`, and the supplement GUI slot), but the
+  recommendation is to keep it and spend one in-game minute verifying the four recipes.
+
+**Retest focus:** wrench rotate/remove on each machine (and that no GUI opens), washer RPM readout,
+washer fluid tooltip, and mining a machine with items/upgrades to confirm the contents drop.

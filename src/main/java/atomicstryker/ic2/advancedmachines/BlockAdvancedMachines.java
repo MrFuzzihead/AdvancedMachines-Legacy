@@ -1,6 +1,8 @@
 package atomicstryker.ic2.advancedmachines;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 
 import net.minecraft.block.Block;
@@ -30,6 +32,7 @@ import ic2.core.block.BlockBase;
 import ic2.core.block.TileEntityBlock;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 import ic2.core.init.MainConfig;
+import ic2.core.item.tool.ItemToolWrench;
 import ic2.core.util.ConfigUtil;
 
 public class BlockAdvancedMachines extends BlockContainer {
@@ -39,6 +42,16 @@ public class BlockAdvancedMachines extends BlockContainer {
 
     /** IC2 advanced machine casing item damage (`Ic2Items.advancedMachine`). */
     private static final int ADVANCED_MACHINE_DAMAGE = 12;
+
+    /** Bound for the before-break tile entity stash (same order of magnitude as IC2's). */
+    private static final int MAX_TES_BEFORE_BREAK = 8;
+
+    /**
+     * Tile entities captured in {@link #onBlockPreDestroy} just before removal. Vanilla removes the
+     * tile entity before calling {@code getDrops()}, so without this the machine's contents were lost
+     * when mined. IC2's BlockMultiID uses the same trick.
+     */
+    private static final ArrayDeque<TileEntity> TES_BEFORE_BREAK = new ArrayDeque<TileEntity>(MAX_TES_BEFORE_BREAK);
 
     private IIcon[][] iconBuffer;
 
@@ -192,14 +205,13 @@ public class BlockAdvancedMachines extends BlockContainer {
     @Override
     public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int metadata, int fortune) {
         ArrayList<ItemStack> dropList = super.getDrops(world, x, y, z, metadata, fortune);
-        TileEntity te = world.getTileEntity(x, y, z);
-        if (te instanceof IInventory) {
-            IInventory iinv = (IInventory) te;
-            for (int index = 0; index < iinv.getSizeInventory(); ++index) {
-                ItemStack itemstack = iinv.getStackInSlot(index);
+        IInventory inventory = findInventory(world, x, y, z);
+        if (inventory != null) {
+            for (int index = 0; index < inventory.getSizeInventory(); ++index) {
+                ItemStack itemstack = inventory.getStackInSlot(index);
                 if (itemstack != null) {
                     dropList.add(itemstack);
-                    iinv.setInventorySlotContents(index, (ItemStack) null);
+                    inventory.setInventorySlotContents(index, null);
                 }
             }
         }
@@ -207,13 +219,22 @@ public class BlockAdvancedMachines extends BlockContainer {
         return dropList;
     }
 
-    @Override
-    public void breakBlock(World world, int x, int y, int z, Block blockID, int blockMeta) {
-        super.breakBlock(world, x, y, z, blockID, blockMeta);
-        // Nothing else to do: BlockContainer.breakBlock already removed the tile entity, and vanilla
-        // drops the inventory through getDrops() via dropBlockAsItemWithChance(). The old custom
-        // duplicating loop here was dead code and would have duplicated a stack if the removal order
-        // ever changed.
+    private static IInventory findInventory(World world, int x, int y, int z) {
+        TileEntity te = world.getTileEntity(x, y, z);
+        if (te instanceof IInventory) {
+            return (IInventory) te;
+        }
+        Iterator<TileEntity> iterator = TES_BEFORE_BREAK.descendingIterator();
+        while (iterator.hasNext()) {
+            TileEntity candidate = iterator.next();
+            if (candidate.getWorldObj() == world && candidate.xCoord == x
+                && candidate.yCoord == y
+                && candidate.zCoord == z) {
+                iterator.remove();
+                return candidate instanceof IInventory ? (IInventory) candidate : null;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -299,12 +320,19 @@ public class BlockAdvancedMachines extends BlockContainer {
     @Override
     public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer entityPlayer, int par6, float par7,
         float par8, float par9) {
-        if (!entityPlayer.isSneaking()) {
-            entityPlayer.openGui(ModAdvancedMachines.instance, 0, world, x, y, z);
-            return true;
+        // A wrench is handled by ItemToolWrench#onItemUseFirst. The client still reaches this method
+        // (its onItemUseFirst returns false outside the simulation), which used to pop the GUI open
+        // while the machine was being rotated or removed.
+        if (entityPlayer.isSneaking() || isHoldingWrench(entityPlayer)) {
+            return false;
         }
+        entityPlayer.openGui(ModAdvancedMachines.instance, 0, world, x, y, z);
+        return true;
+    }
 
-        return false;
+    private static boolean isHoldingWrench(EntityPlayer player) {
+        ItemStack held = player.getHeldItem();
+        return held != null && held.getItem() instanceof ItemToolWrench;
     }
 
     private boolean isActive(IBlockAccess iba, int x, int y, int z) {
@@ -334,6 +362,18 @@ public class BlockAdvancedMachines extends BlockContainer {
     public void onBlockPreDestroy(World world, int x, int y, int z, int meta) {
         super.onBlockPreDestroy(world, x, y, z, meta);
         TileEntity te = world.getTileEntity(x, y, z);
+        if (te == null) {
+            return;
+        }
+
+        // Stash the inventory so getDrops() can still read it after BlockContainer removes the TE.
+        if (te instanceof IInventory) {
+            if (TES_BEFORE_BREAK.size() >= MAX_TES_BEFORE_BREAK) {
+                TES_BEFORE_BREAK.pollLast();
+            }
+            TES_BEFORE_BREAK.push(te);
+        }
+
         if (!(te instanceof IHasGui)) {
             return;
         }
@@ -344,6 +384,22 @@ public class BlockAdvancedMachines extends BlockContainer {
             EntityPlayerMP player = (EntityPlayerMP) obj;
             if (player.openContainer instanceof ContainerBase && ((ContainerBase<?>) player.openContainer).base == te) {
                 player.closeScreen();
+            }
+        }
+    }
+
+    @Override
+    public void onBlockAdded(World world, int x, int y, int z) {
+        super.onBlockAdded(world, x, y, z);
+        // Drop any stale stash entry for this position (e.g. a wrench drop followed by a new block).
+        Iterator<TileEntity> iterator = TES_BEFORE_BREAK.descendingIterator();
+        while (iterator.hasNext()) {
+            TileEntity candidate = iterator.next();
+            if (candidate.getWorldObj() == world && candidate.xCoord == x
+                && candidate.yCoord == y
+                && candidate.zCoord == z) {
+                iterator.remove();
+                break;
             }
         }
     }

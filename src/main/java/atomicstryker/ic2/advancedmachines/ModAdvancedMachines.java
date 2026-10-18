@@ -19,8 +19,6 @@ import cpw.mods.fml.common.network.IGuiHandler;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
 import ic2.api.item.IC2Items;
-import ic2.core.block.machine.container.ContainerOreWashing;
-import ic2.core.block.machine.tileentity.TileEntityOreWashing;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
 @Mod(
@@ -247,7 +245,7 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
             if (tesm instanceof TileEntityAdvancedMacerator) {
                 return new ContainerAdvancedMacerator(player, (TileEntityAdvancedMacerator) tesm);
             } else if (tesm instanceof TileEntityAdvancedOreWasher) {
-                return new ContainerOreWashing(player, (TileEntityOreWashing) tesm);
+                return new ContainerAdvancedOreWasher(player, (TileEntityAdvancedOreWasher) tesm);
             }
 
             return new ContainerAdvancedMachine<TileEntityStandardMachine>(player, tesm);

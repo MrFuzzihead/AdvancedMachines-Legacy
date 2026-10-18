@@ -3,6 +3,7 @@ package atomicstryker.ic2.advancedmachines;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
@@ -92,6 +93,11 @@ public class TileEntityAdvancedExtractor extends TileEntityExtractor implements 
     @Override
     public String getInventoryName() {
         return "Centrifuge Extractor";
+    }
+
+    @Override
+    public boolean wrenchCanSetFacing(EntityPlayer player, int side) {
+        return this.getFacing() != side;
     }
 
 }

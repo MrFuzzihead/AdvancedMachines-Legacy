@@ -1,7 +1,6 @@
 package atomicstryker.ic2.advancedmachines;
 
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.ICrafting;
 
 import ic2.core.block.machine.container.ContainerStandardMachine;
 import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
@@ -9,13 +8,13 @@ import ic2.core.slot.SlotInvSlot;
 
 public class ContainerAdvancedMachine<T extends TileEntityStandardMachine> extends ContainerStandardMachine<T> {
 
-    private final IAdvancedMachine advM;
-    private int speedNetworked;
+    private final AdvancedMachineSpeedSync speedSync;
 
     public ContainerAdvancedMachine(EntityPlayer entityPlayer, T tileEntity) {
         super(entityPlayer, tileEntity);
-        advM = (IAdvancedMachine) tileEntity;
-        speedNetworked = 0;
+        speedSync = new AdvancedMachineSpeedSync((IAdvancedMachine) tileEntity);
+
+        IAdvancedMachine advM = (IAdvancedMachine) tileEntity;
 
         if (advM.getOutputSlots()
             .size() == 2) {
@@ -48,21 +47,12 @@ public class ContainerAdvancedMachine<T extends TileEntityStandardMachine> exten
     @Override
     public void detectAndSendChanges() {
         super.detectAndSendChanges();
-
-        if (speedNetworked != advM.getSpeed()) {
-            for (int index = 0; index < crafters.size(); ++index) {
-                ICrafting crafter = (ICrafting) crafters.get(index);
-                crafter.sendProgressBarUpdate(this, 3, advM.getSpeed());
-            }
-            speedNetworked = advM.getSpeed();
-        }
+        speedSync.detectAndSendChanges(this, crafters);
     }
 
     @Override
     public void updateProgressBar(int index, int value) {
-        if (index == 3) {
-            advM.setClientSpeed(value);
-        } else {
+        if (!speedSync.updateProgressBar(index, value)) {
             super.updateProgressBar(index, value);
         }
     }

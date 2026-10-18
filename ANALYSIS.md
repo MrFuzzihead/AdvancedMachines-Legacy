@@ -731,11 +731,16 @@ The second in-game pass produced three items (see `Findings.txt`):
   option through `getItemDropped`/`damageDropped`, and the 85% wrench success / 15% break rate is the
   base machine's `getWrenchDropRate()` value inherited by all five machines — matching IC2 exactly.
   There is no separate per-machine drop-rate config in 2.2.828.
-* **Transformers / over-voltage.** Verified: IC2 2.2.828 does **not** explode machines from
-  over-voltage. `EnergyNetLocal`/`Grid` never call `createExplosion`; the machine's energy tier only
-  feeds cable melting (`BlockCable`) and voltage-drop/resistance maths, and the legacy
-  `IEnergySink.injectEnergy` accepts any amount. So an MFSU through glass fibre into an Advanced
-  Machine behaves exactly like into a base IC2 machine — no transformer is required for the machine.
-  Transformer gating would be a new feature, not a bug fix.
+* **Transformers / over-voltage.** Verified against the exact jar Gradle resolves (`curse.maven`
+  ic2-242638-2353971): IC2 2.2.828 does **not** explode machines from over-voltage, and cables do not
+  burn out either. `TileEntityElectricMachine.injectEnergy` ignores `voltage` entirely; the whole
+  `ic2/core/energy` package contains no explosion call; `Tile.maxCurrent`, `Node.getMaxCurrent()`,
+  `TileEntityCable.removeConductor()` and `TileEntityLuminator.poof()` are computed/defined but never
+  called; IC2's coremod registers no ASM transformer; and the test instance loads only
+  IC2 + NEI + AdvancedMachines. So an MFSU through glass fibre into an Advanced Machine behaves
+  exactly like into a base IC2 machine — the tier is a voltage class used by the network/loss model
+  and by transformer (block/upgrade) conversion, and no transformer is required. Enforcing
+  over-voltage destruction would be a new feature (IC2 Classic, IC2E 1.12.2 and GregTech do enforce
+  it, which is where the common expectation comes from).
 * **Supplements removed.** See §12 #4 and the note at the top of this document. `GUIRotary.png` was
   patched to erase the slot graphic (x 73–91, y 16–33 filled with the panel colour).

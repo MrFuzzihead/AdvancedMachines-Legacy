@@ -3,8 +3,10 @@ package atomicstryker.ic2.advancedmachines;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.World;
 
 import ic2.api.recipe.RecipeOutput;
 import ic2.core.block.TileEntityLiquidTankStandardMaschine;
@@ -38,8 +40,6 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
     private int speed;
     private final String dataFormat;
     private final int dataScaling;
-
-    private boolean overclockExplosionTriggered;
 
     private OutputStatus lastOutputStatus = OutputStatus.NO_INPUT;
 
@@ -202,26 +202,62 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
                 te.maxEnergy = (int) Math.min(Integer.MAX_VALUE, requiredStorage);
             }
         }
+    }
 
+    /**
+     * Removes (and drops) any overclockers beyond {@link MachineMath#MAX_OVERCLOCKERS}. Called before
+     * the base rate calculation so the machine never trades on an over-stacked slot. Replaces the old
+     * behaviour of exploding the machine, which could fire repeatedly and damage the surroundings.
+     */
+    public void enforceOverclockerCap(TileEntityStandardMachine te) {
+        int overclockers = countOverclockers(te);
+        int excess = MachineMath.excessOverclockers(overclockers, MachineMath.MAX_OVERCLOCKERS);
+        if (excess <= 0) {
+            return;
+        }
+
+        World world = te.getWorldObj();
+        for (int i = te.upgradeSlot.size() - 1; i >= 0 && excess > 0; i--) {
+            ItemStack stack = te.upgradeSlot.get(i);
+            if (!isOverclocker(stack)) {
+                continue;
+            }
+            int removed = Math.min(excess, stack.stackSize);
+            ItemStack dropped = stack.copy();
+            dropped.stackSize = removed;
+            stack.stackSize -= removed;
+            if (stack.stackSize <= 0) {
+                te.upgradeSlot.put(i, null);
+            }
+            excess -= removed;
+            if (world != null && !world.isRemote) {
+                dropAtMachine(world, te, dropped);
+            }
+        }
+    }
+
+    private static int countOverclockers(TileEntityStandardMachine te) {
         int overclockers = 0;
         for (int i = 0; i < te.upgradeSlot.size(); i++) {
             ItemStack stack = te.upgradeSlot.get(i);
-            if (stack != null) {
-                if (stack.getItem() instanceof ItemUpgradeModule && stack.getItemDamage() == 0) {
-                    overclockers += stack.stackSize;
-                }
+            if (isOverclocker(stack)) {
+                overclockers += stack.stackSize;
             }
         }
-        if (MachineMath.shouldTriggerOverclockerExplosion(
-            overclockers,
-            MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD,
-            overclockExplosionTriggered)) {
-            overclockExplosionTriggered = true;
-            if (te.getWorldObj() != null && !te.getWorldObj().isRemote) {
-                te.getWorldObj()
-                    .createExplosion(null, te.xCoord + 0.5f, te.yCoord, te.zCoord + 0.5f, 3f, true);
-            }
-        }
+        return overclockers;
+    }
+
+    private static boolean isOverclocker(ItemStack stack) {
+        return stack != null && stack.getItem() instanceof ItemUpgradeModule && stack.getItemDamage() == 0;
+    }
+
+    private static void dropAtMachine(World world, TileEntityStandardMachine te, ItemStack stack) {
+        double x = te.xCoord + 0.5D + (world.rand.nextDouble() - 0.5D) * 0.5D;
+        double y = te.yCoord + 0.5D + (world.rand.nextDouble() - 0.5D) * 0.5D;
+        double z = te.zCoord + 0.5D + (world.rand.nextDouble() - 0.5D) * 0.5D;
+        EntityItem entity = new EntityItem(world, x, y, z, stack);
+        entity.delayBeforeCanPickup = 10;
+        world.spawnEntityInWorld(entity);
     }
 
     @Override

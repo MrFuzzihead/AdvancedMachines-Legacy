@@ -89,16 +89,15 @@ public final class MachineMath {
         return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, scaled));
     }
 
-    /** Installing more than this many overclockers triggers the mod's punishment. */
-    public static final int OVERCLOCKER_EXPLOSION_THRESHOLD = 6;
+    /** Maximum number of overclockers an advanced machine accepts; the excess is ejected. */
+    public static final int MAX_OVERCLOCKERS = 6;
 
     /**
-     * @return true when the overclocker punishment should fire. Guarded by {@code alreadyTriggered}
-     *         so a machine whose inventory keeps changing does not explode on every rate
-     *         recalculation.
+     * @return how many overclockers exceed {@code max} (0 when within the cap). The caller ejects that
+     *         many so a machine never runs with an over-stacked upgrade slot.
      */
-    public static boolean shouldTriggerOverclockerExplosion(int overclockers, int threshold, boolean alreadyTriggered) {
-        return !alreadyTriggered && overclockers > threshold;
+    public static int excessOverclockers(int overclockers, int max) {
+        return Math.max(0, overclockers - max);
     }
 
     /**

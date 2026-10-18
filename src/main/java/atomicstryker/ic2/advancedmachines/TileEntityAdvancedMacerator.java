@@ -3,13 +3,19 @@ package atomicstryker.ic2.advancedmachines;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
+import atomicstryker.ic2.advancedmachines.client.GuiRotaryMacerator;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import ic2.api.recipe.RecipeOutput;
+import ic2.core.ContainerBase;
 import ic2.core.block.invslot.InvSlotOutput;
 import ic2.core.block.machine.tileentity.TileEntityMacerator;
+import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
 public class TileEntityAdvancedMacerator extends TileEntityMacerator implements IAdvancedMachine, IProgressAccess {
 
@@ -63,6 +69,7 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
 
     @Override
     public void setOverclockRates() {
+        advLogic.enforceOverclockerCap(this);
         super.setOverclockRates();
         advLogic.setOverclockRates(this);
     }
@@ -119,6 +126,17 @@ public class TileEntityAdvancedMacerator extends TileEntityMacerator implements 
     @Override
     public void setRawProgress(short value) {
         progress = value;
+    }
+
+    @Override
+    public ContainerBase<? extends TileEntityStandardMachine> getGuiContainer(EntityPlayer player) {
+        return new ContainerAdvancedMachine<TileEntityStandardMachine>(player, this);
+    }
+
+    @SideOnly(Side.CLIENT)
+    @Override
+    public GuiScreen getGui(EntityPlayer player, boolean isAdmin) {
+        return new GuiRotaryMacerator(new ContainerAdvancedMachine<TileEntityStandardMachine>(player, this));
     }
 
 }

@@ -126,15 +126,11 @@ public class MachineMathTest {
     }
 
     @Test
-    public void overclockerExplosionTriggersAtMostOnce() {
-        assertFalse(
-            MachineMath.shouldTriggerOverclockerExplosion(6, MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD, false));
-        assertTrue(
-            MachineMath.shouldTriggerOverclockerExplosion(7, MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD, false));
-        assertFalse(
-            MachineMath.shouldTriggerOverclockerExplosion(7, MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD, true));
-        assertFalse(
-            MachineMath.shouldTriggerOverclockerExplosion(100, MachineMath.OVERCLOCKER_EXPLOSION_THRESHOLD, true));
+    public void overclockersAboveTheCapAreExcess() {
+        assertEquals(0, MachineMath.excessOverclockers(0, MachineMath.MAX_OVERCLOCKERS));
+        assertEquals(0, MachineMath.excessOverclockers(6, MachineMath.MAX_OVERCLOCKERS));
+        assertEquals(1, MachineMath.excessOverclockers(7, MachineMath.MAX_OVERCLOCKERS));
+        assertEquals(58, MachineMath.excessOverclockers(64, MachineMath.MAX_OVERCLOCKERS));
     }
 
     @Test

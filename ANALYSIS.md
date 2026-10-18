@@ -585,28 +585,29 @@ Changes are landed as small, tested batches. `./gradlew test --offline` is the g
   machines; the GUI constructors take an unused tile-entity parameter; the custom GUIs do not show
   IC2's charge/upgrade tooltips.
 
-### Remaining implementation items (after batches 6–8)
+### Remaining implementation items
 
-Everything in the executive summary's Critical/High/Medium list is addressed. What is left is
-cosmetic or design-choice work:
+Everything in the executive summary's Critical/High/Medium list is addressed, and the low-priority
+items below were implemented in the follow-up pass (see §15):
 
-* **GUI parity (cosmetic).** The custom GUIs do not reproduce IC2's compatible-upgrade info button /
-  tooltip (`GuiTooltipHelper.drawUpgradeslotTooltip`, the `infobutton.png` at 3,3 in the top-left).
-  In 2.2.828 that is the *only* tooltip the base machine GUI draws — there is no charge tooltip —
-  and adding the button blind would overlap the mod's left-aligned title on its custom textures, so
-  it needs an in-game layout pass first. `getGui()` still returns the base IC2 screens for any mod
-  that bypasses the mod's own `IGuiHandler`.
-* **Hard overclocker cap.** The >6-overclocker punishment is bounded (fires once, server-side) but is
-  still an explosion; a proper fix is to reject/cap overclockers at insert time, which needs a custom
-  `InvSlotUpgrade` (IC2 owns the `upgradeSlot` instance, so that is a larger refactor).
-* **Performance polish.** `getIcon` now does a single tile-entity lookup. The remaining per-tick
+* ~~**GUI parity.**~~ **Done.** The five GUIs now extend a shared `GuiAdvancedMachine` base that draws
+  IC2's compatible-upgrade info button + tooltip (`GuiTooltipHelper.drawUpgradeslotTooltip`) and a
+  centred title to make room for it.
+* ~~**`getGui()` / `getGuiContainer()` overrides.**~~ **Done.** All five machines return their own GUI
+  and container, so mods that bypass the mod's `IGuiHandler` get the advanced screen too.
+* ~~**Hard overclocker cap.**~~ **Done.** Overclockers beyond 6 are ejected (dropped at the machine)
+  before the base rate calculation, instead of firing an explosion.
+* ~~**Machine tooltips.**~~ **Done.** `ItemAdvancedMachine` shows IC2's
+  `"Power X EU/t, Y EU/t max"` line, computed from the configured power multiplier.
+* **Performance polish.** `getIcon` does a single tile-entity lookup. The remaining per-tick
   allocations in `CommonLogicAdvancedMachines.getOutput` are IC2-shaped (the base machine also calls
   `inputSlot.process()` every tick) and are low priority.
-* **Server smoke test** (done): a headless `./gradlew runServer` reached `Done (0.988s)!`, loaded
+* **Voltage enforcement** is deliberately deferred; the three implementation options are written up in
+  §14.
+* **Server smoke test** (done): a headless `./gradlew runServer` reached `Done`, loaded
   `AdvancedMachines`/`IC2`/NEI/CodeChickenCore and shut down cleanly, with no `atomicstryker` stack
   frames. The only log errors are pre-existing dev-environment artifacts (FML signature/binary-patch
   warnings, a modern `antlr4` build-tool jar on the run classpath, and IC2's deobf signature warning).
-  This validates load/registration only; in-world machine behaviour still needs the §11 pass.
 
 ### Batch 6 details (done)
 
@@ -744,3 +745,120 @@ The second in-game pass produced three items (see `Findings.txt`):
   it, which is where the common expectation comes from).
 * **Supplements removed.** See §12 #4 and the note at the top of this document. `GUIRotary.png` was
   patched to erase the slot graphic (x 73–91, y 16–33 filled with the panel colour).
+
+---
+
+## 14. Voltage enforcement options (deferred)
+
+The mod does **not** currently enforce voltage tiers: in the pinned IC2 2.2.828 build, neither
+`TileEntityElectricMachine.injectEnergy` nor the energy net destroys machines (see §13). Making the
+advanced machines require transformers/step-down would be a feature add. Three implementation options,
+in increasing blast radius, mirroring IC2 Experimental 1.12.2.
+
+### How 1.12.2 does it (verified from `ic2/core/energy/leg/EnergyCalculatorLeg`)
+
+After the flow is solved, for every sink:
+
+```java
+if (conductorOverload || !(amount > EnergyNet.instance.getPowerFromTier(sink.getSinkTier()))) continue;
+// otherwise record the sink in sinksToExplode ...
+```
+
+then, for each recorded sink, `explodeTile(world, tile, maxPower)`:
+
+1. bails out when `misc/enableEnetExplosions` is off;
+2. asks the machine first — `IOverloadHandler.onOverload(tier)` can handle it gracefully, and
+   `IExplosionPowerOverride` can veto or resize the blast;
+3. otherwise `world.setBlockToAir(pos)` +
+   `new ExplosionIC2(world, null, x+.5, y+.5, z+.5, 2.5f, 0.75f, ExplosionIC2.Type.Electrical).doExplosion()`.
+
+Cables in the same pass: `conductorOverload → removeConductor()`, lesser → `removeInsulation()`.
+Note the comparison is `amount` (energy delivered) vs the tier's voltage, not a raw voltage.
+
+In 1.7.10 the explosion helper already exists: `IC2.explodeMachineAt(World, x, y, z, boolean noDrop)`
+= `new ExplosionIC2(world, null, x+.5, y+.5, z+.5, 2.5f, 0.75f)` + `destroy(x,y,z,noDrop)` +
+`doExplosion()`.
+
+### Option C — override `injectEnergy` in the mod's machines (no mixins, recommended)
+
+The advanced TEs already extend `TileEntityElectricMachine`, so a shared override suffices:
+
+```java
+@Override
+public double injectEnergy(ForgeDirection from, double amount, double voltage) {
+    if (!worldObj.isRemote && voltage > EnergyNet.instance.getPowerFromTier(getSinkTier())) {
+        IC2.explodeMachineAt(worldObj, xCoord, yCoord, zCoord, false);
+        return amount; // reject the packet
+    }
+    return super.injectEnergy(from, amount, voltage);
+}
+```
+
+* Pros: no new dependencies, only the five advanced machines change, `getSinkTier()` already includes
+  transformer upgrades so upgraded machines do not blow.
+* Cons: base IC2 machines and other addons are unaffected (arguably desirable).
+
+### Option B — mixin `TileEntityElectricMachine` (closest to 1.12.2's per-machine model)
+
+```java
+@Mixin(TileEntityElectricMachine.class)
+public abstract class MixinTileEntityElectricMachine {
+    @Inject(method = "injectEnergy", at = @At("HEAD"), cancellable = true)
+    private void advancedmachines$enforceVoltage(ForgeDirection dir, double amount, double voltage,
+        CallbackInfoReturnable<Double> cir) {
+        TileEntityElectricMachine self = (TileEntityElectricMachine) (Object) this;
+        World world = self.getWorldObj();
+        if (world == null || world.isRemote) return;
+        if (voltage <= EnergyNet.instance.getPowerFromTier(self.getSinkTier())) return;
+        IC2.explodeMachineAt(world, self.xCoord, self.yCoord, self.zCoord, false);
+        cir.setReturnValue(amount);
+    }
+}
+```
+
+* Pros: matches base IC2 and other addons built on `TileEntityElectricMachine`.
+* Cons: larger blast radius; needs the mixin plumbing below.
+
+### Option A — mixin the energy net (closest to 1.12.2's global model)
+
+`@Mixin(EnergyNetLocal.class)`, inject around `sink.injectEnergy(dir, amount, voltage)` in
+`processChanges()`, collect overloaded sinks, then explode them centrally (and optionally call
+`removeConductor()` for overloaded cables). Most faithful, most fragile: it changes the shared energy
+net for every mod.
+
+### Mixin plumbing (the repo is currently `usesMixins = false`)
+
+* `gradle.properties`: `usesMixins = true`, `mixinsPackage = "atomicstryker.ic2.advancedmachines.mixin"`,
+  optionally `mixinPlugin`.
+* Add the UniMixins runtime dependency (required for mixins in GTNH projects).
+* `src/main/resources/mixins.advancedmachines.json` (package, `compatibilityLevel: JAVA_8`, mixin list);
+  the build generates the refmap.
+* Config gating: mixins load before Forge configs, so either implement
+  `IMixinConfigPlugin.shouldApplyMixin()` reading a small file, or apply always and check a runtime
+  flag inside the injected method (static holder defaulting to off, set in `preInit`).
+
+### Caveats
+
+* 1.7.10's `voltage` semantics differ from 1.12.2's `amount`; test the 32/128/512/2048 thresholds.
+* `getPowerFromTier(tier) = 8 << tier * 2` (32/128/512/2048 for tiers 1-4).
+* Guard `world.isRemote`; `explodeMachineAt` removes the block, so do not recurse.
+* Mixins cannot be unit-tested (they apply under the FML launchwrapper); verification is in-game.
+
+---
+
+## 15. Low-priority implementation pass
+
+Implemented after the second in-game pass:
+
+* **GUI upgrade info button + tooltip.** New shared base `client/GuiAdvancedMachine<T>` draws the frame,
+  a centred title, IC2's `infobutton.png` at (3,3), and calls
+  `GuiTooltipHelper.drawUpgradeslotTooltip` for the hover area — the same chrome the IC2 machine GUIs
+  have. The five GUIs were reduced to hooks for their own sprites/text.
+* **`getGui()` / `getGuiContainer()`.** Every machine now returns its advanced GUI/container, so IC2's
+  `launchGui` path and other mods that bypass the mod's `IGuiHandler` get the correct screen.
+* **Hard overclocker cap.** `CommonLogicAdvancedMachines.enforceOverclockerCap` runs before the base
+  rate calculation and ejects overclockers beyond `MachineMath.MAX_OVERCLOCKERS` (6) as dropped items.
+  Replaces the once-only explosion. `MachineMath.excessOverclockers` is unit tested.
+* **Item tooltips.** `ItemAdvancedMachine.addInformation` emits IC2's
+  `"Power X EU/t, Y EU/t max"` line using the configured power multiplier (2->6, 1->3, 16->48 EU/t at
+  the default 3x; 32 EU/t max). Covered by `ItemAdvancedMachineTest`.

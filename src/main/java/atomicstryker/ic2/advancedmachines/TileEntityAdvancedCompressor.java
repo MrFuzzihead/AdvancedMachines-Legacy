@@ -3,13 +3,19 @@ package atomicstryker.ic2.advancedmachines;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
+import atomicstryker.ic2.advancedmachines.client.GuiSingularityCompressor;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import ic2.api.recipe.RecipeOutput;
+import ic2.core.ContainerBase;
 import ic2.core.block.invslot.InvSlotOutput;
 import ic2.core.block.machine.tileentity.TileEntityCompressor;
+import ic2.core.block.machine.tileentity.TileEntityStandardMachine;
 
 public class TileEntityAdvancedCompressor extends TileEntityCompressor implements IAdvancedMachine, IProgressAccess {
 
@@ -42,6 +48,7 @@ public class TileEntityAdvancedCompressor extends TileEntityCompressor implement
 
     @Override
     public void setOverclockRates() {
+        advLogic.enforceOverclockerCap(this);
         super.setOverclockRates();
         advLogic.setOverclockRates(this);
     }
@@ -94,6 +101,17 @@ public class TileEntityAdvancedCompressor extends TileEntityCompressor implement
     @Override
     public boolean wrenchCanSetFacing(EntityPlayer player, int side) {
         return this.getFacing() != side;
+    }
+
+    @Override
+    public ContainerBase<? extends TileEntityStandardMachine> getGuiContainer(EntityPlayer player) {
+        return new ContainerAdvancedMachine<TileEntityStandardMachine>(player, this);
+    }
+
+    @SideOnly(Side.CLIENT)
+    @Override
+    public GuiScreen getGui(EntityPlayer player, boolean isAdmin) {
+        return new GuiSingularityCompressor(new ContainerAdvancedMachine<TileEntityStandardMachine>(player, this));
     }
 
 }

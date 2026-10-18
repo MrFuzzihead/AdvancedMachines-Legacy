@@ -49,6 +49,36 @@ public class ItemAdvancedMachineTest {
         assertNotNull(item.getUnlocalizedName(new ItemStack(item, 1, 99)));
     }
 
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private static String tooltip(ItemAdvancedMachine item, int meta) {
+        List raw = new ArrayList();
+        item.addInformation(new ItemStack(item, 1, meta), null, raw, false);
+        return raw.isEmpty() ? ""
+            : raw.get(0)
+                .toString();
+    }
+
+    /**
+     * Mirrors IC2's base tooltip line, using the configured power multiplier (default 3x): macerator
+     * 2 -> 6 EU/t, recycler 1 -> 3 EU/t, ore washer 16 -> 48 EU/t, all 32 EU/t max.
+     */
+    @Test
+    public void tooltipsShowPowerAndTier() {
+        ItemAdvancedMachine item = new ItemAdvancedMachine(new BlockAdvancedMachines());
+
+        assertTrue(tooltip(item, 0).contains("6 EU/t, 32 EU/t"));
+        assertTrue(tooltip(item, 1).contains("6 EU/t, 32 EU/t"));
+        assertTrue(tooltip(item, 2).contains("6 EU/t, 32 EU/t"));
+        assertTrue(tooltip(item, 3).contains("3 EU/t, 32 EU/t"));
+        assertTrue(tooltip(item, 4).contains("48 EU/t, 32 EU/t"));
+    }
+
+    @Test
+    public void unknownMetadataHasNoTooltip() {
+        ItemAdvancedMachine item = new ItemAdvancedMachine(new BlockAdvancedMachines());
+        assertTrue(tooltip(item, 99).isEmpty());
+    }
+
     @Test
     public void allMachinesAreListedWhenEnabled() {
         ItemAdvancedMachine item = new ItemAdvancedMachine(new BlockAdvancedMachines());

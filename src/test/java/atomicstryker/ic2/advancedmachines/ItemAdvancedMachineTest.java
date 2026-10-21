@@ -60,7 +60,7 @@ public class ItemAdvancedMachineTest {
 
     /**
      * Mirrors IC2's base tooltip line, using the configured power multiplier (default 3x): macerator
-     * 2 -> 6 EU/t, recycler 1 -> 3 EU/t, ore washer 16 -> 48 EU/t, all 32 EU/t max.
+     * 2 -> 6 EU/t, recycler 1 -> 3 EU/t, all LV/32; ore washer 16 -> 48 EU/t, which is MV/128.
      */
     @Test
     public void tooltipsShowPowerAndTier() {
@@ -70,7 +70,18 @@ public class ItemAdvancedMachineTest {
         assertTrue(tooltip(item, 1).contains("6 EU/t, 32 EU/t"));
         assertTrue(tooltip(item, 2).contains("6 EU/t, 32 EU/t"));
         assertTrue(tooltip(item, 3).contains("3 EU/t, 32 EU/t"));
-        assertTrue(tooltip(item, 4).contains("48 EU/t, 32 EU/t"));
+        assertTrue(tooltip(item, 4).contains("48 EU/t, 128 EU/t"));
+    }
+
+    /** Raising the power factor must raise the advertised tier with it, not just the draw. */
+    @Test
+    public void tooltipTierFollowsARaisedPowerFactor() {
+        ModAdvancedMachines.instance.setSettings(new AdvancedMachineSettings(10, 10000, 20.0d));
+        ItemAdvancedMachine item = new ItemAdvancedMachine(new BlockAdvancedMachines());
+
+        assertTrue(tooltip(item, 0).contains("40 EU/t, 128 EU/t"));
+        assertTrue(tooltip(item, 3).contains("20 EU/t, 32 EU/t"));
+        assertTrue(tooltip(item, 4).contains("320 EU/t, 512 EU/t"));
     }
 
     @Test

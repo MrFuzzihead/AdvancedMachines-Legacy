@@ -16,9 +16,6 @@ public class ItemAdvancedMachine extends ItemBlock {
     /** Base IC2 machine consumption in EU/t (before the mod's power-draw multiplier), by metadata. */
     private static final int[] BASE_ENERGY_CONSUME = { 2, 2, 2, 1, 16 };
 
-    /** Every advanced machine is a tier-1 sink, i.e. 32 EU/t max, unless upgraded in-world. */
-    private static final int MACHINE_TIER_VOLTAGE = 32;
-
     private static final String KEY_POWER = "ic2.item.tooltip.power";
     private static final String KEY_MAX = "ic2.item.tooltip.max";
 
@@ -60,8 +57,10 @@ public class ItemAdvancedMachine extends ItemBlock {
     }
 
     /**
-     * Shows IC2's "Power X EU/t, Y EU/t max" line, matching the base machine tooltips. The draw is
-     * computed from the configured power multiplier so it stays accurate if the config is changed.
+     * Shows IC2's "Power X EU/t, Y EU/t max" line. The draw is computed from the configured power
+     * multiplier and the tier voltage from that draw, so the pair always agrees: the machines declare
+     * the voltage class they actually draw at (48 EU/t is MV/128, not LV/32). Overclockers and
+     * transformer upgrades are installed per machine and are not part of the item tooltip.
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
@@ -75,12 +74,13 @@ public class ItemAdvancedMachine extends ItemBlock {
         double factor = mod != null ? mod.getSettings().powerDrawFactor
             : AdvancedMachineSettings.DEFAULT_POWER_DRAW_FACTOR;
         int energyPerTick = MachineMath.scaledEnergyConsume(BASE_ENERGY_CONSUME[meta], factor);
+        int tierVoltage = MachineMath.tierVoltage(MachineMath.tierForPower(energyPerTick));
 
         info.add(
             StatCollector.translateToLocal(KEY_POWER) + " "
                 + energyPerTick
                 + " EU/t, "
-                + MACHINE_TIER_VOLTAGE
+                + tierVoltage
                 + " EU/t "
                 + StatCollector.translateToLocal(KEY_MAX));
     }

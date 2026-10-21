@@ -140,4 +140,41 @@ public class CommonLogicAdvancedMachinesTest {
             "buffer must cover a whole boosted operation",
             te.maxEnergy >= (long) te.operationLength * te.energyConsume);
     }
+
+    /** At the default factor every machine still draws LV, so the tier stays 1. */
+    @Test
+    public void defaultDrawStaysTierOne() {
+        TileEntityAdvancedCompressor te = newCompressor();
+
+        newLogic().setOverclockRates(te);
+
+        assertEquals(1, te.getSinkTier());
+    }
+
+    /**
+     * A draw multiplied past LV must raise the sink tier, otherwise an over-voltage pack explodes the
+     * machine the moment it is fed from the class of source it needs (IC2Tweaks: packet &gt;
+     * tier voltage). 2 EU/t * 20 = 40 EU/t needs 128 EU/t packets, i.e. tier 2.
+     */
+    @Test
+    public void boostedDrawRaisesTheSinkTier() {
+        TileEntityAdvancedCompressor te = newCompressor();
+        AdvancedMachineSettings boosted = new AdvancedMachineSettings(10, 10000, 20.0d);
+
+        new CommonLogicAdvancedMachines("%5d", 1, boosted).setOverclockRates(te);
+
+        assertEquals(MachineMath.tierForPower(40), te.getSinkTier());
+        assertEquals(2, te.getSinkTier());
+    }
+
+    /** The tier is only ever raised: a transformer-upgraded machine must keep its higher tier. */
+    @Test
+    public void existingHigherTierIsPreserved() {
+        TileEntityAdvancedCompressor te = newCompressor();
+        te.setTier(3);
+
+        newLogic().setOverclockRates(te);
+
+        assertEquals(3, te.getSinkTier());
+    }
 }

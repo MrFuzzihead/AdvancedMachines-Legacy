@@ -34,12 +34,18 @@ mod, keeping the machines alive with bug fixes, IC2-parity work, and a modernize
 - **Rotary Ore Washer** — an Ore Washing Plant with a fluid tank that ramps up to 10× speed
 - Speed ramps up from the base IC2 rate to `maxMachineSpeedUpFactor` after `maxMachineSpeedUpTicks` of
   continuous work, and decays while idle
-- Uses `machinePowerDrawFactor` times the base machine's EU/t while working
+- Uses `machinePowerDrawFactor` times the base machine's EU/t while working, and declares the IC2
+  voltage tier that draw belongs to (so the Rotary Ore Washer is MV/128 EU/t max at the default 3x,
+  not a 48 EU/t machine advertising LV/32)
+- Plays correctly with over-voltage rules (IC2Tweaks, IC2 1.12.2 packet model): a machine is never
+  blown up by a supply of the class it actually draws from. Overclocking past the tier still needs
+  transformer upgrades, exactly as in IC2
 - Extra output slots are fully automation-friendly (bottom-side extraction, like IC2 outputs)
 - A redstone signal idles a machine at zero cost
 - Overclockers are capped at 6 per machine so a stacked upgrade slot can't hang the server
 - IC2-style item tooltips (`Power X EU/t, Y EU/t max`), GUI chrome (compatible-upgrade info button
-  and tooltip), wrench behaviour, and block drops
+  and tooltip), wrench behaviour, and block drops. The `max` value is the voltage class derived from
+  the advertised draw
 
 ## Requirements
 

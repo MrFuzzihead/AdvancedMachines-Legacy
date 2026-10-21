@@ -203,6 +203,31 @@ public class CommonLogicAdvancedMachines implements IAdvancedMachine {
                 te.maxEnergy = (int) Math.min(Integer.MAX_VALUE, requiredStorage);
             }
         }
+
+        applyRequiredTier(te);
+    }
+
+    /**
+     * Raises the sink tier to the voltage class the machine's (config-scaled) base draw belongs to.
+     * <p>
+     * IC2 derives a machine's tier from {@code defaultTier} plus transformer upgrades only, so a draw
+     * that this mod multiplied past the tier voltage — the Rotary Ore Washer's 16 -&gt; 48 EU/t at the
+     * default 3x — keeps advertising LV. That is harmless in plain IC2 2.2.828 (which ignores the
+     * tier when injecting energy), but packs with an over-voltage rule (IC2Tweaks, or IC2 1.12.2's
+     * packet model) destroy the machine as soon as it is fed from the only class of source that can
+     * actually power it: 48 EU/t cannot be delivered by a 32 EU/t LV packet.
+     * <p>
+     * The draw used is {@code defaultEnergyConsume * machinePowerDrawFactor}, i.e. without the
+     * overclocker multiplier. Overclocking past the tier is ordinary IC2 behaviour, and pulling that
+     * back up is what the transformer upgrade is for, so the tier is only ever raised here and
+     * transformer upgrades are never undone.
+     */
+    private void applyRequiredTier(TileEntityStandardMachine te) {
+        int baseDraw = MachineMath.scaledEnergyConsume(te.defaultEnergyConsume, settings.powerDrawFactor);
+        int requiredTier = MachineMath.tierForPower(baseDraw);
+        if (requiredTier > te.getSinkTier()) {
+            te.setTier(requiredTier);
+        }
     }
 
     /**

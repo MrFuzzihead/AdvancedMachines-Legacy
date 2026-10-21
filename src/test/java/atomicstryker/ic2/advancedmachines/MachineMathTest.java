@@ -159,4 +159,34 @@ public class MachineMathTest {
         assertFalse(MachineMath.isValidPowerDrawFactor(Double.NaN));
         assertFalse(MachineMath.isValidPowerDrawFactor(Double.POSITIVE_INFINITY));
     }
+
+    @Test
+    public void tierVoltageMatchesIc2() {
+        assertEquals(8, MachineMath.tierVoltage(0));
+        assertEquals(32, MachineMath.tierVoltage(1));
+        assertEquals(128, MachineMath.tierVoltage(2));
+        assertEquals(512, MachineMath.tierVoltage(3));
+        assertEquals(2048, MachineMath.tierVoltage(4));
+        assertEquals(Integer.MAX_VALUE, MachineMath.tierVoltage(14));
+        assertEquals(Integer.MAX_VALUE, MachineMath.tierVoltage(40));
+    }
+
+    @Test
+    public void tierForPowerRoundsUpToTheVoltageClass() {
+        assertEquals(1, MachineMath.tierForPower(0));
+        assertEquals(1, MachineMath.tierForPower(32));
+        assertEquals(2, MachineMath.tierForPower(33));
+        assertEquals(2, MachineMath.tierForPower(48));
+        assertEquals(2, MachineMath.tierForPower(128));
+        assertEquals(3, MachineMath.tierForPower(129));
+        assertEquals(4, MachineMath.tierForPower(2048));
+        assertEquals(14, MachineMath.tierForPower(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void tierHelpersRoundTrip() {
+        for (int tier = 1; tier < 14; tier++) {
+            assertEquals(tier, MachineMath.tierForPower(MachineMath.tierVoltage(tier)));
+        }
+    }
 }

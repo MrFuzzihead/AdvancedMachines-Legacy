@@ -111,6 +111,11 @@ public class ModAdvancedMachines implements IGuiHandler, IProxy {
         return settings;
     }
 
+    /** Test seam for the config-derived settings (the mod instance is not created in unit tests). */
+    void setSettings(AdvancedMachineSettings settings) {
+        this.settings = settings;
+    }
+
     /** @return whether the machine for {@code meta} is enabled in the config (defaults to true). */
     public boolean isMachineEnabled(int meta) {
         return meta < 0 || meta >= machineEnabled.length || machineEnabled[meta];

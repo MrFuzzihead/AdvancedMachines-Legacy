@@ -89,6 +89,36 @@ public final class MachineMath {
         return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, scaled));
     }
 
+    /**
+     * IC2's {@code EnergyNet.getPowerFromTier}: 8 EU/t for tier 0 (ULV), then 32/128/512/2048/... for
+     * tiers 1-4. Tiers past 13 would overflow an {@code int} shift, so they saturate.
+     */
+    public static int tierVoltage(int tier) {
+        if (tier <= 0) {
+            return 8;
+        }
+        if (tier >= 14) {
+            return Integer.MAX_VALUE;
+        }
+        return 8 << (2 * tier);
+    }
+
+    /**
+     * Smallest machine tier (LV or above) whose packet size covers {@code euPerTick}, i.e. the tier a
+     * sink has to declare so that a single source of that class can feed it.
+     * <p>
+     * This is the inverse of {@link #tierVoltage(int)}: 32 EU/t stays tier 1, 33 EU/t needs tier 2.
+     * Any value above tier 13's voltage saturates at tier 14.
+     */
+    public static int tierForPower(int euPerTick) {
+        for (int tier = 1; tier < 14; tier++) {
+            if (euPerTick <= tierVoltage(tier)) {
+                return tier;
+            }
+        }
+        return 14;
+    }
+
     /** Maximum number of overclockers an advanced machine accepts; the excess is ejected. */
     public static final int MAX_OVERCLOCKERS = 6;
 

@@ -1,10 +1,12 @@
 package atomicstryker.ic2.advancedmachines;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.Container;
+import net.minecraft.inventory.InventoryBasic;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -53,5 +55,24 @@ public class CappedUpgradeSlotTest {
         assertTrue(replaced instanceof CappedUpgradeSlot);
         // Non-upgrade items are still rejected by IC2's own accepts().
         assertFalse(((CappedUpgradeSlot) replaced).isItemValid(new ItemStack(new Item())));
+    }
+
+    /**
+     * The GUI sends {@code slot.slotNumber} to the server, which looks the slot up by that id. A
+     * replacement that forgets to take over the original id stays at the default 0, so every click
+     * on an upgrade slot is routed to slot 0 (the machine input) instead.
+     */
+    @Test
+    public void replacedUpgradeSlotsKeepTheirSlotNumber() {
+        TileEntityAdvancedCompressor te = new TileEntityAdvancedCompressor();
+        DummyContainer container = new DummyContainer();
+        container.add(new Slot(new InventoryBasic("dummy", false, 1), 0, 0, 0));
+        container.add(new SlotInvSlot(te.upgradeSlot, 0, 8, 8));
+
+        CappedUpgradeSlot.replaceUpgradeSlots(container, te.upgradeSlot);
+
+        Object replaced = container.inventorySlots.get(1);
+        assertTrue(replaced instanceof CappedUpgradeSlot);
+        assertEquals(1, ((Slot) replaced).slotNumber);
     }
 }

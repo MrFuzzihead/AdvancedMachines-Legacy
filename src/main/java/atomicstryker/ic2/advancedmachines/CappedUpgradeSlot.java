@@ -36,13 +36,15 @@ final class CappedUpgradeSlot extends SlotInvSlot {
             Slot slot = slots.get(i);
             if (slot instanceof SlotInvSlot && ((SlotInvSlot) slot).invSlot == upgradeSlot) {
                 SlotInvSlot original = (SlotInvSlot) slot;
-                slots.set(
-                    i,
-                    new CappedUpgradeSlot(
-                        upgradeSlot,
-                        original.index,
-                        original.xDisplayPosition,
-                        original.yDisplayPosition));
+                CappedUpgradeSlot replacement = new CappedUpgradeSlot(
+                    upgradeSlot,
+                    original.index,
+                    original.xDisplayPosition,
+                    original.yDisplayPosition);
+                // Container.addSlotToContainer() is what normally hands a slot its id; a slot swapped
+                // in afterwards keeps the default 0, so every click on it would be sent to slot 0.
+                replacement.slotNumber = original.slotNumber;
+                slots.set(i, replacement);
             }
         }
     }
